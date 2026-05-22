@@ -6,6 +6,8 @@ const API = 'http://localhost:8000';
 
 function slugifyReaction(r) {
   const raw = String(r.reaction_name || r.equation || `reaction-${r.id}`).toLowerCase()
+    .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (m) => '₀₁₂₃₄₅₆₇₈₉'.indexOf(m))
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (m) => '⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(m))
     .replace(/→|⇌|->|<->|=>|≠/g, '-')
     .replace(/[^a-zа-яё0-9]+/gi, '-')
     .replace(/-+/g, '-')
@@ -14,20 +16,24 @@ function slugifyReaction(r) {
   return `${r.id}-${raw}`;
 }
 function reactionUrl(r) { return `/reaction/${slugifyReaction(r)}`; }
-function normalizeEquation(text = '') {
-  return String(text).replace(/<->|⇄|↔|⇌|в‡Њ/g, '⇌').replace(/=>|->|⟶|→|в†’/g, '→').replace(/[;,.:\s]+$/g, '').trim();
-}
+function normalizeEquation(text = '') { return String(text).replace(/<->|⇄|↔|⇌/g, '⇌').replace(/=>|->|⟶|→/g, '→').replace(/[;,.:\s]+$/g, '').trim(); }
 
 function ChemText({ text = '' }) {
-  const s = String(text || '').replace(/\^([0-9]*[+-])/g, '');
+  const s = String(text || '').replace(/\^([0-9]*[+-])/g, '$1');
   const nodes = [];
   for (let i = 0; i < s.length; i += 1) {
-    const ch = s[i];
-    const prev = s[i - 1] || '';
+    const ch = s[i]; const prev = s[i - 1] || ''; const next = s[i + 1] || '';
     if (/\d/.test(ch) && /[A-Za-zА-Яа-я\)\]]/.test(prev)) {
       let n = ch;
       while (i + 1 < s.length && /\d/.test(s[i + 1])) { i += 1; n += s[i]; }
-      nodes.push(<sub className="chem-index" key={nodes.length}>{n}</sub>);
+      const next2 = s[i + 1] || '';
+      if ((next2 === '+' || next2 === '-') && prev === ']') {
+        i += 1; nodes.push(<sup className="chem-charge" key={nodes.length}>{n}{s[i]}</sup>);
+      } else {
+        nodes.push(<sub className="chem-index" key={nodes.length}>{n}</sub>);
+      }
+    } else if ((ch === '+' || ch === '-') && (prev === ']' || prev === ')' || /\d/.test(prev)) && (next === ' ' || next === '' || next === ',')) {
+      nodes.push(<sup className="chem-charge" key={nodes.length}>{ch}</sup>);
     } else {
       nodes.push(<React.Fragment key={nodes.length}>{ch}</React.Fragment>);
     }

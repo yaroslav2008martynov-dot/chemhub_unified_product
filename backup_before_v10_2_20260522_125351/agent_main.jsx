@@ -6,8 +6,8 @@ const API = 'http://localhost:8000';
 
 function normalizeEquation(text = '') {
   return String(text)
-    .replace(/<->|⇄|↔|⇌|в‡Њ/g, '⇌')
-    .replace(/=>|->|⟶|→|в†’/g, '→')
+    .replace(/<->|⇄|↔|⇌/g, '⇌')
+    .replace(/=>|->|⟶|→/g, '→')
     .replace(/[;,.:\s]+$/g, '')
     .trim();
 }
@@ -18,16 +18,13 @@ function App() {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState({});
   const [dirty, setDirty] = useState({});
-  const [removed, setRemoved] = useState({});
   const [feedback, setFeedback] = useState({});
   const [err, setErr] = useState('');
   const dirtyRef = useRef({});
   const itemsRef = useRef([]);
-  const removedRef = useRef({});
 
   useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
   useEffect(() => { itemsRef.current = items; }, [items]);
-  useEffect(() => { removedRef.current = removed; }, [removed]);
 
   async function upload(e) {
     e?.preventDefault();
@@ -43,10 +40,8 @@ function App() {
       setItems([]);
       setSelected({});
       setDirty({});
-      setRemoved({});
       dirtyRef.current = {};
       itemsRef.current = [];
-      removedRef.current = {};
     } catch (ex) {
       setErr('Ошибка загрузки PDF: ' + (ex?.message || ex));
     }
@@ -60,20 +55,15 @@ function App() {
       setJob(j);
 
       const dirtyNow = dirtyRef.current || {};
-      const removedNow = removedRef.current || {};
       const localById = Object.fromEntries((itemsRef.current || []).map((x) => [x.id, x]));
-      const nextItems = (Array.isArray(rs) ? rs : [])
-        .filter((serverItem) => !removedNow[serverItem.id])
-        .map((serverItem) => {
-          if (dirtyNow[serverItem.id] && localById[serverItem.id]) return localById[serverItem.id];
-          return serverItem;
-        });
+      setItems((Array.isArray(rs) ? rs : []).map((serverItem) => {
+        if (dirtyNow[serverItem.id] && localById[serverItem.id]) return localById[serverItem.id];
+        return serverItem;
+      }));
 
-      setItems(nextItems);
       setSelected((prev) => {
         const next = { ...prev };
-        nextItems.forEach((x) => { if (next[x.id] === undefined) next[x.id] = true; });
-        Object.keys(removedNow).forEach((id) => { delete next[id]; });
+        (Array.isArray(rs) ? rs : []).forEach((x) => { if (next[x.id] === undefined) next[x.id] = true; });
         return next;
       });
       setErr('');
@@ -100,22 +90,6 @@ function App() {
       }
       return copy;
     });
-  }
-
-  function removeFromList(r) {
-    const nextRemoved = { ...removedRef.current, [r.id]: true };
-    removedRef.current = nextRemoved;
-    setRemoved(nextRemoved);
-    setItems((prev) => prev.filter((x) => x.id !== r.id));
-    setSelected((prev) => {
-      const next = { ...prev };
-      delete next[r.id];
-      return next;
-    });
-    const nextDirty = { ...dirtyRef.current };
-    delete nextDirty[r.id];
-    dirtyRef.current = nextDirty;
-    setDirty(nextDirty);
   }
 
   async function saveReaction(r) {
@@ -151,7 +125,7 @@ function App() {
   }
 
   async function publish(ids) {
-    const cleanIds = ids.filter((id) => id && !removedRef.current[id]);
+    const cleanIds = ids.filter(Boolean);
     if (!cleanIds.length) return alert('Не выбраны реакции');
     await fetch(`${API}/agent/publish`, {
       method: 'POST',
@@ -176,7 +150,7 @@ function App() {
 
   return (
     <div>
-      <header className="header"><div className="header-inner"><b>ChemHub AI Agent</b><span>извлечение реакций из PDF</span></div></header>
+      <header className="header"><div className="header-inner"><b>ChemHub AI Agent</b><span>Извлечение реакций из PDF</span></div></header>
       <main className="container">
         <section className="card hero-card">
           <h1>AI-агент обработки PDF</h1>
@@ -221,7 +195,6 @@ function App() {
               {dirty[r.id] && <span className="badge warn">есть несохранённые правки</span>}
               <button onClick={() => saveReaction(r)}>Сохранить правки</button>
               <button className="good" onClick={() => publish([r.id])}>Загрузить эту реакцию на сайт</button>
-              <button className="danger" onClick={() => removeFromList(r)}>Удалить реакцию из списка</button>
               {r.published && <span className="badge">уже на сайте</span>}
             </section>
           ))}

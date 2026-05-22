@@ -4,7 +4,6 @@ import json
 import re
 from pathlib import Path
 from typing import Annotated
-from pydantic import BaseModel
 
 import requests
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
@@ -23,10 +22,6 @@ from app.schemas import (
     AdminLoginIn, AdminLoginOut, AdvertisementIn, AdvertisementOut, FeedbackIn, JobOut,
     JobReactionIn, JobReactionOut, ReactionIn, ReactionOut,
 )
-
-class DeleteBySourcePdfIn(BaseModel):
-    source_pdf: str
-
 
 app = FastAPI(title="ChemHub Unified API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -304,32 +299,6 @@ def update_reaction(reaction_id: int, payload: ReactionIn, db: Session = Depends
     return reaction
 
 
-
-
-@app.get("/admin/source-pdfs", dependencies=[Depends(require_admin)])
-def admin_source_pdfs(db: Session = Depends(get_db)):
-    counts = {}
-    rows = db.query(Reaction.source_pdf).filter(Reaction.source_pdf != "").all()
-    for row in rows:
-        source = row[0] if isinstance(row, tuple) else getattr(row, "source_pdf", "")
-        source = (source or "").strip()
-        if source:
-            counts[source] = counts.get(source, 0) + 1
-    return [{"source_pdf": k, "count": v} for k, v in sorted(counts.items(), key=lambda x: x[0].lower())]
-
-
-@app.post("/admin/delete-by-source-pdf", dependencies=[Depends(require_admin)])
-def admin_delete_by_source_pdf(payload: dict, db: Session = Depends(get_db)):
-    source_pdf = str(payload.get("source_pdf", "")).strip()
-    if not source_pdf:
-        raise HTTPException(status_code=400, detail="source_pdf is required")
-    query = db.query(Reaction).filter(Reaction.source_pdf == source_pdf)
-    deleted = query.count()
-    query.delete(synchronize_session=False)
-    db.commit()
-    export_site_files(db)
-    return {"deleted": deleted, "source_pdf": source_pdf}
-
 @app.delete("/admin/reactions/{reaction_id}", dependencies=[Depends(require_admin)])
 def delete_reaction(reaction_id: int, db: Session = Depends(get_db)):
     reaction = db.get(Reaction, reaction_id)
@@ -339,31 +308,6 @@ def delete_reaction(reaction_id: int, db: Session = Depends(get_db)):
     db.commit()
     export_site_files(db)
     return {"deleted": True}
-
-
-@app.get("/admin/source-pdfs", dependencies=[Depends(require_admin)])
-def admin_source_pdfs(db: Session = Depends(get_db)):
-    rows = db.query(Reaction.source_pdf).filter(Reaction.source_pdf.isnot(None), Reaction.source_pdf != "").all()
-    counts: dict[str, int] = {}
-    for (name,) in rows:
-        if not name:
-            continue
-        counts[name] = counts.get(name, 0) + 1
-    return [{"source_pdf": name, "count": count} for name, count in sorted(counts.items(), key=lambda x: x[0].lower())]
-
-
-
-def delete_reactions_by_source_pdf(payload: DeleteBySourcePdfIn, db: Session = Depends(get_db)):
-    source_pdf = (payload.source_pdf or "").strip()
-    if not source_pdf:
-        raise HTTPException(status_code=400, detail="source_pdf is required")
-    rows = db.query(Reaction).filter(Reaction.source_pdf == source_pdf).all()
-    deleted = len(rows)
-    for row in rows:
-        db.delete(row)
-    db.commit()
-    export_site_files(db)
-    return {"deleted": deleted, "source_pdf": source_pdf}
 
 
 @app.get("/ads", response_model=list[AdvertisementOut])

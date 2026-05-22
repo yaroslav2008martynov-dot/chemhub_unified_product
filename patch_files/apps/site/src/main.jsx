@@ -4,23 +4,9 @@ import './styles.css';
 
 const API = 'http://localhost:8000';
 
-const ELEMENTS = [
-  ['H',1,1,'s'],['He',1,18,'s'],
-  ['Li',2,1,'s'],['Be',2,2,'s'],['B',2,13,'p'],['C',2,14,'p'],['N',2,15,'p'],['O',2,16,'p'],['F',2,17,'p'],['Ne',2,18,'p'],
-  ['Na',3,1,'s'],['Mg',3,2,'s'],['Al',3,13,'p'],['Si',3,14,'p'],['P',3,15,'p'],['S',3,16,'p'],['Cl',3,17,'p'],['Ar',3,18,'p'],
-  ['K',4,1,'s'],['Ca',4,2,'s'],['Sc',4,3,'d'],['Ti',4,4,'d'],['V',4,5,'d'],['Cr',4,6,'d'],['Mn',4,7,'d'],['Fe',4,8,'d'],['Co',4,9,'d'],['Ni',4,10,'d'],['Cu',4,11,'d'],['Zn',4,12,'d'],['Ga',4,13,'p'],['Ge',4,14,'p'],['As',4,15,'p'],['Se',4,16,'p'],['Br',4,17,'p'],['Kr',4,18,'p'],
-  ['Rb',5,1,'s'],['Sr',5,2,'s'],['Y',5,3,'d'],['Zr',5,4,'d'],['Nb',5,5,'d'],['Mo',5,6,'d'],['Tc',5,7,'d'],['Ru',5,8,'d'],['Rh',5,9,'d'],['Pd',5,10,'d'],['Ag',5,11,'d'],['Cd',5,12,'d'],['In',5,13,'p'],['Sn',5,14,'p'],['Sb',5,15,'p'],['Te',5,16,'p'],['I',5,17,'p'],['Xe',5,18,'p'],
-  ['Cs',6,1,'s'],['Ba',6,2,'s'],['La-Lu',6,3,'f placeholder'],['Hf',6,4,'d'],['Ta',6,5,'d'],['W',6,6,'d'],['Re',6,7,'d'],['Os',6,8,'d'],['Ir',6,9,'d'],['Pt',6,10,'d'],['Au',6,11,'d'],['Hg',6,12,'d'],['Tl',6,13,'p'],['Pb',6,14,'p'],['Bi',6,15,'p'],['Po',6,16,'p'],['At',6,17,'p'],['Rn',6,18,'p'],
-  ['Fr',7,1,'s'],['Ra',7,2,'s'],['Ac-Lr',7,3,'f placeholder'],['Rf',7,4,'d'],['Db',7,5,'d'],['Sg',7,6,'d'],['Bh',7,7,'d'],['Hs',7,8,'d'],['Mt',7,9,'d'],['Ds',7,10,'d'],['Rg',7,11,'d'],['Cn',7,12,'d'],['Nh',7,13,'p'],['Fl',7,14,'p'],['Mc',7,15,'p'],['Lv',7,16,'p'],['Ts',7,17,'p'],['Og',7,18,'p'],
-  ['La',9,4,'f'],['Ce',9,5,'f'],['Pr',9,6,'f'],['Nd',9,7,'f'],['Pm',9,8,'f'],['Sm',9,9,'f'],['Eu',9,10,'f'],['Gd',9,11,'f'],['Tb',9,12,'f'],['Dy',9,13,'f'],['Ho',9,14,'f'],['Er',9,15,'f'],['Tm',9,16,'f'],['Yb',9,17,'f'],['Lu',9,18,'f'],
-  ['Ac',10,4,'f'],['Th',10,5,'f'],['Pa',10,6,'f'],['U',10,7,'f'],['Np',10,8,'f'],['Pu',10,9,'f'],['Am',10,10,'f'],['Cm',10,11,'f'],['Bk',10,12,'f'],['Cf',10,13,'f'],['Es',10,14,'f'],['Fm',10,15,'f'],['Md',10,16,'f'],['No',10,17,'f'],['Lr',10,18,'f'],
-];
-
 function slugifyReaction(r) {
   const raw = String(r.reaction_name || r.equation || `reaction-${r.id}`).toLowerCase()
-    .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (m) => '₀₁₂₃₄₅₆₇₈₉'.indexOf(m))
-    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (m) => '⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(m))
-    .replace(/→|⇌|->|<->|=>/g, '-')
+    .replace(/→|⇌|->|<->|=>|≠/g, '-')
     .replace(/[^a-zа-яё0-9]+/gi, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
@@ -28,60 +14,77 @@ function slugifyReaction(r) {
   return `${r.id}-${raw}`;
 }
 function reactionUrl(r) { return `/reaction/${slugifyReaction(r)}`; }
-function normalizeEquation(text = '') { return String(text).replace(/<->|⇄|↔|⇌/g, '⇌').replace(/=>|->|⟶|→/g, '→').replace(/[;,.:\s]+$/g, '').trim(); }
-
-function splitNote(token) {
-  const m = String(token).match(/^(.+?)\(([^()]+)\)$/);
-  if (!m) return [token, ''];
-  const note = m[2].trim();
-  if (/^(конц\.?|разб\.?|\d+%|газ|тв\.?|ж\.?|р-р|aq|s|l|g|красный|белый|черный|чёрный|аморфный|крист\.?|ромбическая)$/i.test(note)) return [m[1], note];
-  return [token, ''];
+function normalizeEquation(text = '') {
+  return String(text).replace(/<->|⇄|↔|⇌|в‡Њ/g, '⇌').replace(/=>|->|⟶|→|в†’/g, '→').replace(/[;,.:\s]+$/g, '').trim();
 }
 
 function ChemText({ text = '' }) {
-  const s = String(text);
+  const s = String(text || '').replace(/\^([0-9]*[+-])/g, '');
   const nodes = [];
   for (let i = 0; i < s.length; i += 1) {
     const ch = s[i];
     const prev = s[i - 1] || '';
-    const next = s[i + 1] || '';
     if (/\d/.test(ch) && /[A-Za-zА-Яа-я\)\]]/.test(prev)) {
-      let number = ch;
-      while (i + 1 < s.length && /\d/.test(s[i + 1])) { i += 1; number += s[i]; }
-      nodes.push(<sub className="chem-sub" key={i}>{number}</sub>);
-    } else if ((ch === '+' || ch === '-' || ch === '−') && /[\]\)]|[A-Za-zА-Яа-я]|\d/.test(prev) && (next === ' ' || next === '' || next === ',' || next === ']')) {
-      nodes.push(<sup className="chem-charge" key={i}>{ch}</sup>);
+      let n = ch;
+      while (i + 1 < s.length && /\d/.test(s[i + 1])) { i += 1; n += s[i]; }
+      nodes.push(<sub className="chem-index" key={nodes.length}>{n}</sub>);
     } else {
-      nodes.push(ch);
+      nodes.push(<React.Fragment key={nodes.length}>{ch}</React.Fragment>);
     }
   }
   return <>{nodes}</>;
 }
 
-function FormulaToken({ token }) {
-  const [main, note] = splitNote(token);
-  return <span className="formula-token"><span><ChemText text={main}/></span>{note && <small className="formula-note">{note}</small>}</span>;
+function collectAboveArrow(r) {
+  return [r.conditions, r.temperature, r.pressure, r.catalysts, r.solvents]
+    .filter(v => v && String(v).trim())
+    .join(', ')
+    .replace(/;\s*/g, ', ');
 }
-
-function FormulaSide({ side = '' }) {
-  return <>{String(side).split(/\s*\+\s*/).map((part, idx) => <React.Fragment key={idx}>{idx > 0 && <span className="plus"> + </span>}<FormulaToken token={part.trim()} /></React.Fragment>)}</>;
-}
-
-function allConditions(r) {
-  return [r.temperature, r.pressure, r.conditions, r.catalysts && `кат. ${r.catalysts}`, r.solvents && `р-р ${r.solvents}`, r.states].filter(Boolean).join(', ');
-}
-
 function ReactionEquation({ reaction }) {
   const normalized = normalizeEquation(reaction.equation || '');
   const arrow = normalized.includes('⇌') ? '⇌' : (normalized.includes('≠') ? '≠' : '→');
   const parts = normalized.split(arrow);
-  if (parts.length < 2) return <div className="equation"><ChemText text={normalized}/></div>;
-  const cond = allConditions(reaction);
-  return <div className="reaction-display"><div className="side left"><FormulaSide side={parts[0].trim()} /></div><div className="arrow-stack">{cond && <div className="arrow-cond">{cond}</div>}<div className="arrow-symbol">{arrow}</div></div><div className="side right"><FormulaSide side={parts.slice(1).join(arrow).trim()} /></div></div>;
+  if (parts.length < 2) return <div className="reaction-equation"><ChemText text={normalized}/></div>;
+  const above = collectAboveArrow(reaction);
+  return <div className="reaction-equation equation-layout">
+    <div className="chem-side"><ChemText text={parts[0].trim()} /></div>
+    <div className="arrow-stack">
+      {above && <div className="arrow-condition">{above}</div>}
+      <div className={`chem-arrow ${arrow === '⇌' ? 'reversible' : ''} ${arrow === '≠' ? 'negative' : ''}`}>{arrow}</div>
+    </div>
+    <div className="chem-side"><ChemText text={parts.slice(1).join(arrow).trim()} /></div>
+  </div>;
+}
+function ReactionDetails({ reaction }) {
+  const detailRows = [
+    ['Пояснения', reaction.states],
+    ['Источник', reaction.source_pdf ? `${reaction.source_pdf}${reaction.source_page ? ', стр. ' + reaction.source_page : ''}` : ''],
+  ].filter(([, v]) => v && String(v).trim());
+  if (!detailRows.length && !reaction.reaction_name) return null;
+  return <div className="reaction-details">
+    {reaction.reaction_name && <div className="reaction-name-bottom">{reaction.reaction_name}</div>}
+    {detailRows.map(([k, v]) => <div className="tiny-note" key={k}><b>{k}:</b> {v}</div>)}
+  </div>;
 }
 
+const elements = [
+ ['H',1,1,'s'],['He',18,1,'p'],['Li',1,2,'s'],['Be',2,2,'s'],['B',13,2,'p'],['C',14,2,'p'],['N',15,2,'p'],['O',16,2,'p'],['F',17,2,'p'],['Ne',18,2,'p'],
+ ['Na',1,3,'s'],['Mg',2,3,'s'],['Al',13,3,'p'],['Si',14,3,'p'],['P',15,3,'p'],['S',16,3,'p'],['Cl',17,3,'p'],['Ar',18,3,'p'],
+ ['K',1,4,'s'],['Ca',2,4,'s'],['Sc',3,4,'d'],['Ti',4,4,'d'],['V',5,4,'d'],['Cr',6,4,'d'],['Mn',7,4,'d'],['Fe',8,4,'d'],['Co',9,4,'d'],['Ni',10,4,'d'],['Cu',11,4,'d'],['Zn',12,4,'d'],['Ga',13,4,'p'],['Ge',14,4,'p'],['As',15,4,'p'],['Se',16,4,'p'],['Br',17,4,'p'],['Kr',18,4,'p'],
+ ['Rb',1,5,'s'],['Sr',2,5,'s'],['Y',3,5,'d'],['Zr',4,5,'d'],['Nb',5,5,'d'],['Mo',6,5,'d'],['Tc',7,5,'d'],['Ru',8,5,'d'],['Rh',9,5,'d'],['Pd',10,5,'d'],['Ag',11,5,'d'],['Cd',12,5,'d'],['In',13,5,'p'],['Sn',14,5,'p'],['Sb',15,5,'p'],['Te',16,5,'p'],['I',17,5,'p'],['Xe',18,5,'p'],
+ ['Cs',1,6,'s'],['Ba',2,6,'s'],['La-Lu',3,6,'f'],['Hf',4,6,'d'],['Ta',5,6,'d'],['W',6,6,'d'],['Re',7,6,'d'],['Os',8,6,'d'],['Ir',9,6,'d'],['Pt',10,6,'d'],['Au',11,6,'d'],['Hg',12,6,'d'],['Tl',13,6,'p'],['Pb',14,6,'p'],['Bi',15,6,'p'],['Po',16,6,'p'],['At',17,6,'p'],['Rn',18,6,'p'],
+ ['Fr',1,7,'s'],['Ra',2,7,'s'],['Ac-Lr',3,7,'f'],['Rf',4,7,'d'],['Db',5,7,'d'],['Sg',6,7,'d'],['Bh',7,7,'d'],['Hs',8,7,'d'],['Mt',9,7,'d'],['Ds',10,7,'d'],['Rg',11,7,'d'],['Cn',12,7,'d'],['Nh',13,7,'p'],['Fl',14,7,'p'],['Mc',15,7,'p'],['Lv',16,7,'p'],['Ts',17,7,'p'],['Og',18,7,'p'],
+];
+const lan = ['La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu'];
+const act = ['Ac','Th','Pa','U','Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No','Lr'];
 function PeriodicTable({ onPick }) {
-  return <section className="card periodic-card"><h2>Таблица Менделеева</h2><div className="legend"><span className="s">s-блок</span><span className="p">p-блок</span><span className="d">d-блок</span><span className="f">f-блок</span></div><div className="periodic-grid">{ELEMENTS.map(([sym,row,col,block]) => <button key={sym} className={`el ${block.split(' ')[0]} ${block.includes('placeholder') ? 'placeholder' : ''}`} style={{gridRow: row, gridColumn: col}} onClick={() => !block.includes('placeholder') && onPick(sym)}>{sym}</button>)}</div></section>;
+  return <section className="card periodic-card"><h2>Интерактивная таблица Менделеева</h2>
+    <div className="periodic-grid">{elements.map(([s, g, p, block]) => <button key={s} className={`el el-${block}`} style={{gridColumn:g, gridRow:p}} onClick={() => onPick(s.includes('-') ? s.split('-')[0] : s)}>{s}</button>)}</div>
+    <div className="f-block"><span>Лантаноиды</span>{lan.map(s => <button key={s} className="el el-f" onClick={() => onPick(s)}>{s}</button>)}</div>
+    <div className="f-block"><span>Актиноиды</span>{act.map(s => <button key={s} className="el el-f" onClick={() => onPick(s)}>{s}</button>)}</div>
+    <div className="legend"><span className="el-s">s-блок</span><span className="el-p">p-блок</span><span className="el-d">d-блок</span><span className="el-f">f-блок</span></div>
+  </section>;
 }
 
 function App() {
@@ -90,15 +93,27 @@ function App() {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(false);
   const hasQuery = useMemo(() => q.trim().length > 0, [q]);
-  async function loadAds() { const data = await fetch(`${API}/ads?placement=top`).then((r) => r.json()).catch(() => []); setAds(Array.isArray(data) ? data : []); }
+  async function loadAds() { const data = await fetch(`${API}/ads?placement=top`).then(r => r.json()).catch(() => []); setAds(Array.isArray(data) ? data : []); }
   useEffect(() => { loadAds(); }, []);
   useEffect(() => {
     const query = q.trim();
     if (!query) { setReactions([]); return; }
-    const t = setTimeout(async () => { setLoading(true); const data = await fetch(`${API}/reactions?q=${encodeURIComponent(query)}`).then((r) => r.json()).catch(() => []); setReactions(Array.isArray(data) ? data : []); setLoading(false); }, 250);
+    const t = setTimeout(async () => {
+      setLoading(true);
+      const data = await fetch(`${API}/reactions?q=${encodeURIComponent(query)}`).then(r => r.json()).catch(() => []);
+      setReactions(Array.isArray(data) ? data : []); setLoading(false);
+    }, 250);
     return () => clearTimeout(t);
   }, [q]);
-  return <main className="page"><header className="hero"><div className="brand">ChemHub</div><h1>Поиск химических реакций</h1><p>Введите реагент(ы), продукт, условие, катализатор или название реакции.</p><input className="search" value={q} placeholder="Введите реагент(ы)" onChange={(e) => setQ(e.target.value)} autoFocus /></header>{ads.length ? ads.map((ad) => <section className="ad" key={ad.id} dangerouslySetInnerHTML={{__html: ad.html || ad.title}} />) : <section className="ad">Место для рекламы</section>}<PeriodicTable onPick={(sym) => setQ(sym)} /><section className="card"><h2>Найденные реакции</h2>{loading && <p>Поиск...</p>}{!hasQuery && <p>Начните вводить запрос, чтобы увидеть реакции.</p>}{hasQuery && !loading && reactions.length === 0 && <p>Ничего не найдено.</p>}{reactions.map((r) => <article className={`reaction-card ${r.hidden ? 'negative' : ''}`} key={r.id}><a className="reaction-link" href={reactionUrl(r)}>{r.reaction_name || (r.hidden ? 'Реакция не протекает' : 'Химическая реакция')}</a><ReactionEquation reaction={r}/>{r.hidden && <p className="negative-note">Эти вещества не реагируют между собой.</p>}{r.reaction_name && <div className="reaction-name">{r.reaction_name}</div>}<div className="meta"><span>Реагенты: <ChemText text={r.reactants}/></span><span>Продукты: <ChemText text={r.products}/></span></div></article>)}</section><footer>Создатель проекта: Telegram @brovler228. По рекламе, сотрудничеству и исправлениям реакций: @brovler228 · <a href="/sitemap.xml">sitemap.xml</a></footer></main>;
+  return <>
+    <header className="header"><div className="header-inner"><b>ChemHub</b><span>Поиск химических реакций</span></div></header>
+    <main className="container">
+      <section className="card hero-card"><h1>Химический справочник реакций</h1><p>Введите реагент(ы), продукт, условие, катализатор или название реакции.</p><div className="search-row"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Введите реагент(ы)" autoFocus /></div></section>
+      <PeriodicTable onPick={(s)=>setQ(s)} />
+      {ads.length ? ads.map(ad => <div className="ad" key={ad.id} dangerouslySetInnerHTML={{__html: ad.html || ad.title}} />) : <div className="ad">Место для рекламы</div>}
+      <section className="card"><h2>Найденные реакции</h2>{loading && <p>Поиск...</p>}{!hasQuery && <p>Начните вводить запрос, чтобы увидеть реакции.</p>}{hasQuery && !loading && reactions.length === 0 && <p>Ничего не найдено.</p>}{reactions.map(r => <article className="reaction-card" key={r.id}><div className="reaction-card-head"><h3><a className="reaction-link" href={reactionUrl(r)}>{r.reaction_name || 'Химическая реакция'}</a></h3>{r.confidence_score !== undefined && <span className="score">Точность: {Math.round((r.confidence_score || 0) * 100)}%</span>}</div><a className="equation-link" href={reactionUrl(r)}><ReactionEquation reaction={r}/></a><ReactionDetails reaction={r}/><div className="grid muted"><div><b>Реагенты:</b> {r.reactants}</div><div><b>Продукты:</b> {r.products || (r.impossible_note || '')}</div></div></article>)}</section>
+    </main><footer className="footer">Создатель проекта: Telegram @brovler228. По рекламе, сотрудничеству и исправлениям реакций: @brovler228 · <a href="/sitemap.xml">sitemap.xml</a></footer>
+  </>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
