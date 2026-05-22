@@ -1,113 +1,135 @@
 from __future__ import annotations
 
 import re
-from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any
 
-ARROWS = {"→", "⇌", "->", "=>", "<->", "<=>"}
+ARROW_RE = re.compile(r"(->|=>|<->|<=>|→|⇌|⟶|↔|=)")
+FORMULA_RE = re.compile(r"(?:\d*\s*)?(?:\[[^\]]+\]|[A-ZА-Я][a-zа-я]?)(?:[A-Za-zА-Яа-я0-9()\[\].·+\-↑↓]*)")
+CONDITION_RE = re.compile(
+    r"(^|[\s,])(t|p|hv|hν|Δ)([\s,]|$)|\d{1,4}\s*(?:-\s*\d{1,4}\s*)?(?:°\s*C|°C|o\s*C)|\d{2,5}\s*K|кат\.?|нагрев|электролиз|расплав|в токе|желатин|ацетон|SO2\s*ж|CrO3|HNO3|P4O10|F2|NaF|Pt|Pd|Ni|Fe|MnO2|V2O5",
+    re.I,
+)
+TEMPLATE_CONTEXT_RE = re.compile(r"\b(M|X|Hal|Me|E|Э)\s*(?:=|→|->|-)|щелоч|щзм|щм|галоген|халькоген|пниктоген|group\s*(?:13|14|15|16|17)|(?:13|14|15|16|17)\s*группа", re.I)
+BAD_PROSE_RE = re.compile(r"\b(рис\.|таблица|пример|задача|вопрос|ответ|упражнение|страница)\b", re.I)
+IONIC_OR_ELECTRODE_RE = re.compile(r"\b(катод|анод|электрон|полуреакц|баланс|pka|pkb|пка|пкб|пр\s*=)\b|[ē]", re.I)
 
+@dataclass
+class LayoutLine:
+    text: str
+    page_no: int
+    x0: float
+    y0: float
+    x1: float
+    y1: float
 
 def _clean(s: str) -> str:
-    return re.sub(r"\s+", " ", str(s or "")).strip()
+    if not s:
+        return ""
+    repl = {
+        "": "⚡", "⎯": " ", "─": " ", "—": "-", "–": "-",
+        "оС": "°C", "o C": "°C", "oC": "°C", "Сo": "°C", "Со": "°C",
+        "⟶": "→", "=>": "→", "->": "→", "<=>": "⇌", "<->": "⇌", "↔": "⇌",
+    }
+    for a, b in repl.items():
+        s = s.replace(a, b)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
-
-def _is_condition_like(text: str) -> bool:
+def _line_score(text: str) -> int:
     t = _clean(text)
-    if not t or len(t) > 80:
-        return False
-    return bool(re.search(
-        r"\d{1,4}\s*(?:-|–|—)?\s*\d{0,4}\s*(?:°\s*C|°C|o\s*C|K)"
-        r"|(^|[\s,])(t|p|hv|hν|Δ|кат\.?|нагрев|электролиз|расплав|желатин|ацетон|SO2\s*ж|в\s+токе|CrO3|HNO3|F2|NaF|P4O10)([\s,()]|$)",
-        t, re.I
-    ))
+    if not t:
+        return -20
+    score = 0
+    if ARROW_RE.search(t):
+        score += 8
+    formulas = FORMULA_RE.findall(t)
+    if len(formulas) >= 2:
+        score += 5
+    elif len(formulas) == 1:
+        score += 1
+    if CONDITION_RE.search(t):
+        score += 3
+    if TEMPLATE_CONTEXT_RE.search(t):
+        score += 3
+    if BAD_PROSE_RE.search(t):
+        score -= 6
+    if IONIC_OR_ELECTRODE_RE.search(t) and not ("[" in t and "]" in t and ARROW_RE.search(t)):
+        score -= 8
+    if len(t) > 180:
+        score -= 3
+    return score
 
-
-def _words_to_lines(words):
-    buckets = defaultdict(list)
-    for w in words:
-        # fitz word: x0,y0,x1,y1,text,block,line,word
-        try:
-            x0, y0, x1, y1, text = w[:5]
-        except Exception:
-            continue
-        key = round(float(y0) / 4) * 4
-        buckets[key].append((float(x0), float(y0), float(x1), float(y1), str(text)))
-    lines = []
-    for _, items in sorted(buckets.items()):
-        items.sort(key=lambda x: x[0])
-        text = _clean(" ".join(i[4] for i in items))
-        if text:
-            lines.append({
-                "text": text,
-                "x0": min(i[0] for i in items),
-                "x1": max(i[2] for i in items),
-                "y0": min(i[1] for i in items),
-                "y1": max(i[3] for i in items),
-                "items": items,
-            })
-    return lines
-
-
-def _has_arrow(text: str) -> bool:
-    return any(a in text for a in ARROWS) or "→" in text or "⇌" in text
-
-
-def _arrow_x(line) -> float:
-    items = line.get("items") or []
-    for x0, _y0, x1, _y1, txt in items:
-        if _has_arrow(txt):
-            return (x0 + x1) / 2
-    return (line["x0"] + line["x1"]) / 2
-
-
-def _inject_visual_arrow_conditions(lines):
-    """Add synthetic A -> condition -> B lines for conditions printed above arrow.
-
-    PyMuPDF plain text often separates superscript/over-arrow conditions from the equation.
-    This keeps the original text and adds an extra normalized line that extractor can parse.
-    """
-    out = [l["text"] for l in lines]
-    for i, line in enumerate(lines):
-        text = line["text"]
-        if not _has_arrow(text):
-            continue
-        arrow = "⇌" if ("⇌" in text or "<->" in text or "<=>" in text) else "→"
-        if arrow not in text:
-            text2 = text.replace("->", "→").replace("=>", "→").replace("<->", "⇌").replace("<=>", "⇌")
-        else:
-            text2 = text
-        if arrow not in text2:
-            continue
-        parts = text2.split(arrow, 1)
-        if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
-            continue
-        ax = _arrow_x(line)
-        candidates = []
-        for prev in lines[max(0, i - 3):i]:
-            ptxt = prev["text"]
-            if _has_arrow(ptxt) or not _is_condition_like(ptxt):
+def extract_layout_lines(page: Any) -> list[LayoutLine]:
+    out: list[LayoutLine] = []
+    try:
+        d = page.get_text("dict")
+        page_no = int(getattr(page, "number", 0)) + 1
+        for block in d.get("blocks", []):
+            if block.get("type") != 0:
                 continue
-            center = (prev["x0"] + prev["x1"]) / 2
-            # Allow wider tolerance because conditions are often centered over a short arrow.
-            if abs(center - ax) <= max(120, (line["x1"] - line["x0"]) * 0.35):
-                candidates.append(ptxt)
-        if candidates:
-            cond = ", ".join(dict.fromkeys(candidates))
-            out.append(f"{parts[0].strip()} {arrow} {cond} {arrow} {parts[1].strip()}")
+            for line in block.get("lines", []):
+                spans = line.get("spans", [])
+                text = _clean("".join(s.get("text", "") for s in spans))
+                if not text:
+                    continue
+                bbox = line.get("bbox") or block.get("bbox") or (0, 0, 0, 0)
+                out.append(LayoutLine(text, page_no, *bbox))
+    except Exception:
+        try:
+            raw = page.get_text("text") or ""
+        except Exception:
+            raw = ""
+        page_no = int(getattr(page, "number", 0)) + 1
+        for i, line in enumerate(raw.splitlines()):
+            text = _clean(line)
+            if text:
+                out.append(LayoutLine(text, page_no, 0, i * 10, 100, i * 10 + 8))
+    out.sort(key=lambda l: (round(l.y0, 1), l.x0))
     return out
 
+def build_hybrid_page_text(page: Any) -> str:
+    """Return reaction-like lines with only their visually adjacent condition lines.
 
-def build_hybrid_page_text(page) -> str:
-    try:
-        plain = page.get_text("text") or ""
-    except Exception:
-        plain = ""
-    try:
-        words = page.get_text("words") or []
-        lines = _words_to_lines(words)
-        visual_lines = _inject_visual_arrow_conditions(lines)
-        joined_visual = "\n".join(visual_lines)
-        if joined_visual:
-            return plain + "\n" + joined_visual
-    except Exception:
-        pass
-    return plain
+    Important: condition lines are included only when close to a reaction arrow line.
+    This prevents a condition from one reaction being attached to unrelated reactions.
+    """
+    lines = extract_layout_lines(page)
+    if not lines:
+        return ""
+    selected: set[int] = set()
+
+    for i, ln in enumerate(lines):
+        score = _line_score(ln.text)
+        if score >= 6:
+            selected.add(i)
+
+            # Add visually adjacent condition lines directly above/below this reaction.
+            for j in (i - 2, i - 1, i + 1):
+                if 0 <= j < len(lines):
+                    near = lines[j]
+                    vertical_gap = min(abs(near.y1 - ln.y0), abs(near.y0 - ln.y1), abs(near.y0 - ln.y0))
+                    same_block_x = not (near.x1 < ln.x0 - 40 or near.x0 > ln.x1 + 40)
+                    if vertical_gap < 45 and same_block_x and CONDITION_RE.search(near.text):
+                        selected.add(j)
+
+            # Add same-line or immediately following split products only when they look like formulas,
+            # not arbitrary condition lines.
+            if i + 1 < len(lines):
+                nxt = lines[i + 1]
+                vertical_gap = abs(nxt.y0 - ln.y0)
+                if vertical_gap < 25 and FORMULA_RE.search(nxt.text) and not BAD_PROSE_RE.search(nxt.text):
+                    selected.add(i + 1)
+
+        elif score >= 3 and TEMPLATE_CONTEXT_RE.search(ln.text):
+            selected.add(i)
+
+    result: list[str] = []
+    last_y: float | None = None
+    for idx in sorted(selected):
+        ln = lines[idx]
+        if last_y is not None and abs(ln.y0 - last_y) > 80:
+            result.append("")
+        result.append(ln.text)
+        last_y = ln.y0
+    return "\n".join(result).strip()

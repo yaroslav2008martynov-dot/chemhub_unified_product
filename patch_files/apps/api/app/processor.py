@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 import time
 from pathlib import Path
@@ -18,48 +20,46 @@ except Exception:
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-
 def process_pdf_job(job_id: int, file_path: str, filename: str) -> None:
     threading.Thread(target=_process_pdf_job_sync, args=(job_id, file_path, filename), daemon=True).start()
-
 
 def _dict_to_reaction_obj(d: dict):
     class R:
         pass
+
     r = R()
     eq = str(d.get("equation", "") or "")
-    eq = eq.replace("->", "→").replace("=>", "→").replace("<->", "⇌").replace("<=>", "⇌")
-    arrow = "⇌" if "⇌" in eq else ("→" if "→" in eq else "")
-    left, right = (eq.split(arrow, 1) if arrow else ("", ""))
-    r.reaction_name = d.get("reaction_name", "") or ""
+    arrow = "⇌" if "⇌" in eq else ("→" if "→" in eq else ("≠" if "≠" in eq else "->"))
+    if arrow in eq:
+        left, right = eq.split(arrow, 1)
+    else:
+        left, right = "", ""
+    r.reaction_name = d.get("reaction_name", "")
     r.equation = eq
-    r.reactants = d.get("reactants", "") or left.strip()
-    r.products = d.get("products", "") or right.strip()
-    r.conditions = d.get("conditions", "") or ""
-    r.catalysts = d.get("catalysts", "") or ""
-    r.solvents = d.get("solvents", "") or ""
-    r.temperature = d.get("temperature", "") or ""
-    r.pressure = d.get("pressure", "") or ""
-    r.states = d.get("states", "") or ""
+    r.reactants = left.strip()
+    r.products = right.strip()
+    r.conditions = d.get("conditions", "")
+    r.catalysts = d.get("catalysts", "")
+    r.solvents = d.get("solvents", "")
+    r.temperature = d.get("temperature", "")
+    r.pressure = d.get("pressure", "")
+    r.states = d.get("states", "")
     r.confidence_score = float(d.get("confidence_score", 0.9) or 0.9)
     return r
 
-
 def _reaction_quality(r) -> int:
     return sum(len(str(getattr(r, f, "") or "")) for f in [
-        "equation", "conditions", "catalysts", "solvents", "temperature", "pressure", "states", "reaction_name"
+        "equation", "conditions", "catalysts", "solvents", "temperature", "pressure", "states", "reaction_name",
     ])
 
-
 def _existing_job_reactions(db: Session, job_id: int) -> dict[str, JobReaction]:
-    out = {}
+    out: dict[str, JobReaction] = {}
     for jr in db.query(JobReaction).filter(JobReaction.job_id == job_id).all():
         try:
             out[canonical_equation(jr.equation)] = jr
         except Exception:
             out[jr.equation] = jr
     return out
-
 
 def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page_index: int) -> None:
     key = canonical_equation(reaction.equation)
@@ -81,6 +81,7 @@ def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page
             existing.source_page = page_index
             existing.confidence_score = reaction.confidence_score
         return
+
     db.add(JobReaction(
         job_id=job_id,
         reaction_name=getattr(reaction, "reaction_name", "") or "",
@@ -100,7 +101,6 @@ def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page
         selected=True,
     ))
 
-
 def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
     db: Session = SessionLocal()
     try:
@@ -110,15 +110,17 @@ def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
         job.status = "processing"
         job.message = "Opening PDF"
         db.commit()
+
         doc = fitz.open(file_path)
         job.total_pages = len(doc)
         db.commit()
+
         use_vision = extract_page_reactions is not None
         for page_index, page in enumerate(doc, start=1):
             text = build_hybrid_page_text(page)
             found = []
 
-            # Always run text extractor because it is the layer that reconstructs above-arrow conditions.
+            # Always run text extractor: it is currently the safest source for arrow conditions.
             text_found = extract_reactions_from_text(text)
             found.extend(text_found)
 
@@ -128,18 +130,20 @@ def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
                     db.commit()
                     vision_items = extract_page_reactions(file_path, page_index - 1, context=text)
                     found.extend(_dict_to_reaction_obj(x) for x in vision_items)
-                    print(f"CHEMHUB_VISION_USED page={page_index} reactions={len(vision_items)}", flush=True)
+                    print(f"CHEMHUB_VISION_USED page={page_index} total_candidates={len(found)}", flush=True)
                 except Exception as exc:
                     print(f"CHEMHUB_VISION_FAILED page={page_index}: {exc}", flush=True)
-            print(f"CHEMHUB_TEXT_USED page={page_index} reactions={len(text_found)} total={len(found)}", flush=True)
 
+            print(f"CHEMHUB_EXTRACT page={page_index} reactions={len(found)}", flush=True)
             for reaction in found:
                 _upsert_job_reaction(db, job_id, reaction, filename, page_index)
+
             job.processed_pages = page_index
             job.progress_percent = int((page_index / max(len(doc), 1)) * 100)
             job.message = f"Processed page {page_index}/{len(doc)}"
             db.commit()
             time.sleep(0.01)
+
         job.status = "completed"
         job.progress_percent = 100
         job.message = "Processing completed"
