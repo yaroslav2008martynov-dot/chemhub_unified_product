@@ -23,21 +23,47 @@ GROUP_17 = HALOGENS
 
 PERIODIC_GROUP: dict[str, int] = {}
 for group_num, elements in [
-    (1, ALKALI), (2, ALKALINE_EARTH), (13, GROUP_13), (14, GROUP_14),
-    (15, GROUP_15), (16, GROUP_16), (17, GROUP_17),
+    (1, ALKALI),
+    (2, ALKALINE_EARTH),
+    (13, GROUP_13),
+    (14, GROUP_14),
+    (15, GROUP_15),
+    (16, GROUP_16),
+    (17, GROUP_17),
 ]:
     for element in elements:
         PERIODIC_GROUP[element] = group_num
 
 GROUP_ALIASES = {
-    "щм": ALKALI, "щелочные": ALKALI, "щелочные металлы": ALKALI, "alkali": ALKALI, "alkali metals": ALKALI,
-    "щзм": ALKALINE_EARTH, "щелочноземельные": ALKALINE_EARTH, "щелочноземельные металлы": ALKALINE_EARTH,
-    "alkaline earth": ALKALINE_EARTH, "alkaline earth metals": ALKALINE_EARTH,
-    "галогены": HALOGENS, "галоген": HALOGENS, "гал": HALOGENS, "hal": HALOGENS, "halogens": HALOGENS,
-    "халькогены": CHALCOGENS, "chalcogens": CHALCOGENS,
-    "пниктогены": PNICTOGENS, "pnictogens": PNICTOGENS,
-    "13 группа": GROUP_13, "14 группа": GROUP_14, "15 группа": GROUP_15, "16 группа": GROUP_16, "17 группа": GROUP_17,
-    "group 13": GROUP_13, "group 14": GROUP_14, "group 15": GROUP_15, "group 16": GROUP_16, "group 17": GROUP_17,
+    "щм": ALKALI,
+    "щелочные": ALKALI,
+    "щелочные металлы": ALKALI,
+    "alkali": ALKALI,
+    "alkali metals": ALKALI,
+    "щзм": ALKALINE_EARTH,
+    "щелочноземельные": ALKALINE_EARTH,
+    "щелочноземельные металлы": ALKALINE_EARTH,
+    "alkaline earth": ALKALINE_EARTH,
+    "alkaline earth metals": ALKALINE_EARTH,
+    "галогены": HALOGENS,
+    "галоген": HALOGENS,
+    "гал": HALOGENS,
+    "hal": HALOGENS,
+    "halogens": HALOGENS,
+    "халькогены": CHALCOGENS,
+    "chalcogens": CHALCOGENS,
+    "пниктогены": PNICTOGENS,
+    "pnictogens": PNICTOGENS,
+    "13 группа": GROUP_13,
+    "14 группа": GROUP_14,
+    "15 группа": GROUP_15,
+    "16 группа": GROUP_16,
+    "17 группа": GROUP_17,
+    "group 13": GROUP_13,
+    "group 14": GROUP_14,
+    "group 15": GROUP_15,
+    "group 16": GROUP_16,
+    "group 17": GROUP_17,
 }
 
 FORMULA_TOKEN_RE = re.compile(
@@ -53,26 +79,54 @@ BAD_CONTEXT_RE = re.compile(
 FREE_ION_RE = re.compile(
     r"(^|[\s+])(?:H|OH|Cl|Br|I|NO3|SO4|CO3|PO4|[A-Z][a-z]?\d*)\s*(?:\^?\d*[+\-]|[⁺⁻])\s*(?=(?:[+→⇌]|$))"
 )
+
 EXPLANATION_WORDS = [
-    "оксид", "оксиды", "пероксид", "пероксиды", "надпероксид", "надпероксиды",
-    "галогенид", "галогениды", "карбид", "карбиды", "фосфид", "фосфиды",
-    "гидрид", "гидриды", "сульфид", "сульфиды", "нитрид", "нитриды", "силицид", "силициды",
-    "самовозгорание", "без горения", "ядовитый газ", "также и все",
+    "оксид",
+    "оксиды",
+    "пероксид",
+    "пероксиды",
+    "надпероксид",
+    "надпероксиды",
+    "галогенид",
+    "галогениды",
+    "карбид",
+    "карбиды",
+    "фосфид",
+    "фосфиды",
+    "гидрид",
+    "гидриды",
+    "сульфид",
+    "сульфиды",
+    "нитрид",
+    "нитриды",
+    "силицид",
+    "силициды",
+    "самовозгорание",
+    "без горения",
+    "ядовитый газ",
 ]
 NAME_WORDS = [
-    "синтез рашиг", "метод байер", "габер", "бош", "магическая кислота",
-    "основание миллона", "тефлон", "процесс габера", "процесс габера-боша",
+    "синтез рашиг",
+    "метод байер",
+    "габер",
+    "бош",
+    "магическая кислота",
+    "основание миллона",
+    "тефлон",
 ]
+
 UNWANTED_INFO_RE = re.compile(
     r"\((?:\s*(?:lg|ln|pka|pkb|пка|пкб|пр|кsp|ksp)\s*[\w()]*\s*[=≈~<>].*?)\)"
     r"|(?:\s*(?:lg|ln|pka|pkb|пка|пкб|пр|кsp|ksp)\s*[\w()]*\s*[=≈~<>]\s*[-−]?\d+(?:[,.]\d+)?(?:\s*·\s*10[-−]?\d+)?)",
     re.I,
 )
+
 CONDITION_ONLY_RE = re.compile(
     r"(^|[\s,])(t|p|hv|hν|Δ)([\s,]|$)"
     r"|\d{1,4}\s*(?:[-–]\s*\d{1,4}\s*)?(?:°\s*C|°C|o\s*C|C\b)"
     r"|\d{2,5}\s*K\b"
-    r"|кат\.?|нагрев|электролиз|расплав|давлен|pressure|токе|водород|H2|желатин|ацетон|SO2\s*ж|CrO3|HNO3|P4O10|F2|NaF|Pt|Pd|Ni|Fe|MnO2|V2O5|AlCl3|FeCl3",
+    r"|кат\.?|нагрев|электролиз|расплав|давлен|pressure"
+    r"|в\s+токе|желатин|ацетон|SO2\s*ж|CrO3|HNO3|P4O10|F2|NaF|Pt|Pd|Ni|Fe|MnO2|V2O5|AlCl3|FeCl3",
     re.I,
 )
 
@@ -103,10 +157,21 @@ def _unique_join(items) -> str:
 def _decode_mojibake(text: str) -> str:
     text = str(text or "")
     replacements = {
-        "тЖТ": "→", "тЖУ": "↓", "тЖС": "↑", "тЙа": "≠",
-        "╨║o╨╜╤Ж.": "конц.", "╨║╨╛╨╜╤Ж.": "конц.", "╨║онц.": "конц.",
-        "pa╨╖╨▒.": "разб.", "╤А╨░╨╖╨▒.": "разб.", "╨╢.": "ж.",
-        "┬╖": "·", "╬▒": "α", "╬▓": "β", "╨Ч": "",
+        "тЖТ": "→",
+        "тЖТ": "→",
+        "тЖУ": "↓",
+        "тЖС": "↑",
+        "тЙа": "≠",
+        "╨║o╨╜╤Ж.": "конц.",
+        "╨║╨╛╨╜╤Ж.": "конц.",
+        "╨║онц.": "конц.",
+        "pa╨╖╨▒.": "разб.",
+        "╤А╨░╨╖╨▒.": "разб.",
+        "╨╢.": "ж.",
+        "┬╖": "·",
+        "╬▒": "α",
+        "╬▓": "β",
+        "╨Ч": "",
     }
     for bad, good in replacements.items():
         text = text.replace(bad, good)
@@ -116,10 +181,28 @@ def _decode_mojibake(text: str) -> str:
 def _clean_spaces(text: str) -> str:
     text = _decode_mojibake(str(text or ""))
     replacements = {
-        "\ufeff": "", "⟶": "→", "⟹": "→", "=>": "→", "->": "→",
-        "<=>": "⇌", "<->": "⇌", "↔": "⇌", "⇄": "⇌", "⇔": "⇌",
-        "=/=": "≠", "−": "-", "–": "-", "—": "-", "∙": "·", "⋅": "·",
-        "оС": "°C", "o C": "°C", "oC": "°C", "Сo": "°C", "Со": "°C",
+        "\ufeff": "",
+        "⟶": "→",
+        "⟹": "→",
+        "=>": "→",
+        "->": "→",
+        "<=>": "⇌",
+        "<->": "⇌",
+        "↔": "⇌",
+        "⇄": "⇌",
+        "⇔": "⇌",
+        "=/=": "≠",
+        "≠": "≠",
+        "−": "-",
+        "–": "-",
+        "—": "-",
+        "∙": "·",
+        "⋅": "·",
+        "оС": "°C",
+        "o C": "°C",
+        "oC": "°C",
+        "Сo": "°C",
+        "Со": "°C",
     }
     for a, b in replacements.items():
         text = text.replace(a, b)
@@ -131,77 +214,142 @@ def _clean_spaces(text: str) -> str:
 
 def _translate_lookalikes(text: str) -> str:
     tr = str.maketrans({
-        "А": "A", "В": "B", "С": "C", "Е": "E", "К": "K", "М": "M", "Н": "H", "О": "O", "Р": "P", "Т": "T", "Х": "X",
-        "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
-        "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
-        "⁺": "+", "⁻": "-",
+        "А": "A",
+        "В": "B",
+        "С": "C",
+        "Е": "E",
+        "К": "K",
+        "М": "M",
+        "Н": "H",
+        "О": "O",
+        "Р": "P",
+        "Т": "T",
+        "Х": "X",
+                "₀": "0",
+        "₁": "1",
+        "₂": "2",
+        "₃": "3",
+        "₄": "4",
+        "₅": "5",
+        "₆": "6",
+        "₇": "7",
+        "₈": "8",
+        "₉": "9",
+        "⁰": "0",
+        "¹": "1",
+        "²": "2",
+        "³": "3",
+        "⁴": "4",
+        "⁵": "5",
+        "⁶": "6",
+        "⁷": "7",
+        "⁸": "8",
+        "⁹": "9",
+        "⁺": "+",
+        "⁻": "-",
     })
     return text.translate(tr)
 
 
 def strip_oxidation_states(text: str) -> str:
-    """Remove oxidation states / charges / superscript artifacts, keep normal indices."""
+    """Strictly remove oxidation states, charges and superscript artifacts from equations.
+
+    We keep normal formula indices (H2O, CaH2, SO4), but remove things like H2^0,
+    Ca+2, H-1, [S8^2+] charges, Al+3(OH)4 and standalone superscript digits.
+    """
     text = _clean_spaces(_translate_lookalikes(text))
 
-    # OCR from H₂⁰ can become H20. In redox reagent positions it is H2, not H2O.
-    text = re.sub(r"\bH20(?=\s*(?:\+|→|⇌|$))", "H2", text)
-    text = re.sub(r"\bH20(?=\s*[A-Z])", "H2", text)
+    # Common OCR: H₂⁰ can appear as H20. Only treat it as H2 in the redox examples
+    # where it is directly followed by S, CuO, Ca or alkali metal.
+    text = re.sub(r"\bH20(?=\s*\+\s*(?:O2|S|CuO|Ca|Li|Na|K|Rb|Cs|F2|Cl2|Br2|I2|N2)\b)", "H2", text)
     text = text.replace("H20", "H2O")
 
-    # Bracket charges and any caret charge markers are not needed in your site database.
+    # Remove bracket charges: [S8^2+] -> [S8], [AsF6-] -> [AsF6].
     text = re.sub(r"\[([^\]]*?)\s*\^\s*\d*\s*[+-]\]", r"[\1]", text)
     text = re.sub(r"\[([^\]]*?)(?:\d*\s*[+-])\]", r"[\1]", text)
 
-    # Remove oxidation states attached to formulas/elements: H2^0, O2^0, Ca0, Ca+2, H-1, O-2.
+    # Remove oxidation states after formulas/elements: Ca0, H2^0, H-1, Al+3.
+    # Important: do not treat the final zero of real formulas like P4O10 as an oxidation state.
     text = re.sub(r"([A-Z][a-z]?(?:\d+)?(?:\([^)]*\)\d*)?)\s*\^\s*(?:0|[+-]\s*\d+)(?=($|[\s+→⇌≠),]))", r"\1", text)
     text = re.sub(r"\b([A-Z][a-z]?)0(?=($|[\s+→⇌≠),]))", r"\1", text)
     text = re.sub(r"([A-Z][a-z]?(?:\d+)?(?:\([^)]*\)\d*)?)\s*[+-]\s*\d+(?=($|[\s+→⇌≠),]))", r"\1", text)
 
-    # Al +3(OH)4 / Ga +3(OH)4 -> Al(OH)4 / Ga(OH)4.
+    # Remove oxidation state inserted inside complexes/formulas: Al + 3(OH)4 -> Al(OH)4.
     text = re.sub(r"\b([A-Z][a-z]?)\s*\+\s*\d+\s*(?=\()", r"\1", text)
-    # + 1H -> + H; H-1 -> H.
+
+    # Remove standalone coefficient-looking oxidation before H after arrow/plus: + 1H -> + H.
     text = re.sub(r"(?<=[+→⇌]\s)\d+\s*H(?=($|[\s+]))", "H", text)
-    text = re.sub(r"\bH(\d*)\s*[-+]\s*\d+\b", r"H\1", text)
+
+    # Hydride artifacts.
+    text = re.sub(r"\bH(\d*)\s*-\s*\d+\b", r"H\1", text)
+    text = re.sub(r"\bH(\d*)\s*\+\s*\d+\b", r"H\1", text)
+
+    # Remove remaining caret charges/superscript style fragments.
     text = re.sub(r"\^\s*\d*\s*[+-]?", "", text)
     return _clean_spaces(text)
 
 
 def _remove_unwanted_info(text: str) -> str:
-    text = UNWANTED_INFO_RE.sub("", str(text or ""))
+    text = UNWANTED_INFO_RE.sub("", text)
     text = re.sub(r"\(\s*\)", "", text)
     return _clean_spaces(text)
-
-
-def _repair_known_oxidation_ocr(eq: str) -> str:
-    """Fix cases where oxidation-state zero made H2 look like water."""
-    eq = _clean_spaces(eq)
-    # 2H2O + O2 -> 2H2O caused by H₂⁰ + O₂⁰ -> H₂O.
-    eq = re.sub(r"\b2\s*H2O\s*\+\s*O2\s*→\s*2\s*H2O\b", "2H2 + O2 → 2H2O", eq)
-    eq = re.sub(r"\bH2O\s*\+\s*S\s*→\s*H2S\b", "H2 + S → H2S", eq)
-    eq = re.sub(r"\bH2O\s*\+\s*CuO\s*→\s*Cu\s*\+\s*H2O\b", "H2 + CuO → Cu + H2O", eq)
-    eq = re.sub(r"\bH2O\s*\+\s*Ca\s*→\s*CaH2\b", "H2 + Ca → CaH2", eq)
-    eq = re.sub(r"\bH2\s*\+\s*2(Li|Na|K|Rb|Cs)\s*→\s*2\1\s*\+\s*H\b", r"2\1 + H2 → 2\1H", eq)
-    return eq
 
 
 def fix_ocr_formula(text: str) -> str:
     text = _remove_unwanted_info(text)
     text = strip_oxidation_states(text)
-    text = _repair_known_oxidation_ocr(text)
     text = text.replace("O2^", "O2↑").replace("O2 ^", "O2↑")
     text = re.sub(r"([A-Za-z0-9)\]])\^($|\s|\+)", r"\1↑\2", text)
     text = re.sub(r"([A-Z][a-z]?(?:\d+|\([^)]*\)\d*)?)\s*[vV]\b", r"\1↓", text)
+
+    # Specific repairs seen in chemistry OCR.
     text = re.sub(r"H2\+1O", "H2O", text)
     text = re.sub(r"H2\+1S", "H2S", text)
     text = re.sub(r"\bCa\s*\+\s*H2\b", "CaH2", text)
     text = re.sub(r"\b(Mg|Sr|Ba)\s*\+\s*H2\b", r"\1H2", text)
     text = re.sub(r"\b(2\s*)?(Li|Na|K|Rb|Cs)\s*\+\s*H\b", lambda m: (m.group(1) or "") + m.group(2) + "H", text)
+
+    # Restore spacing.
     text = re.sub(r"\s*\+\s*", " + ", text)
     text = re.sub(r"\s*(→|⇌|≠)\s*", r" \1 ", text)
     text = re.sub(r"\s+", " ", text)
-    return _clean_spaces(_repair_known_oxidation_ocr(text))
+    return _clean_spaces(text)
 
 
+def _repair_common_oxidation_ocr_misreads(text: str) -> str:
+    """Repair common OCR cases where oxidation states were read as formula atoms.
+
+    Examples:
+    2H2^0 + O2 -> 2H2^+1O must become 2H2 + O2 -> 2H2O.
+    This function is deliberately narrow: it fixes known oxidation-state OCR artifacts
+    without changing normal H2O reactions.
+    """
+    text = _clean_spaces(text)
+
+    # Water self-reaction artifact from H2^0/O^-2 notation:
+    # 2H2O + O2 -> 2H2O  should be  2H2 + O2 -> 2H2O
+    def _fix_h2_o2(m: re.Match) -> str:
+        left_coef = m.group(1) or ""
+        right_coef = m.group(2) or ""
+        return f"{left_coef}H2 + O2 в†’ {right_coef}H2O"
+
+    text = re.sub(
+        r"\b(\d*)H2O\s*\+\s*O2\s*в†’\s*(\d*)H2O\b",
+        _fix_h2_o2,
+        text,
+    )
+
+    # Earlier textbook cases with H2^0 read as H2O.
+    text = re.sub(r"\bH2O\s*\+\s*S\s*в†’\s*H2S\b", "H2 + S в†’ H2S", text)
+    text = re.sub(r"\bH2O\s*\+\s*CuO\s*в†’\s*Cu\s*\+\s*H2O\b", "H2 + CuO в†’ Cu + H2O", text)
+    text = re.sub(r"\bH2O\s*\+\s*Ca\s*в†’\s*CaH2\b", "H2 + Ca в†’ CaH2", text)
+
+    # Remove any leftover oxidation-state fragments that survived OCR normalization.
+    text = re.sub(r"([A-Z][a-z]?\d*)\s*\+\s*1(?=[A-Z])", r"\1", text)
+    text = re.sub(r"([A-Z][a-z]?\d*)\s*-\s*\d+(?=($|[\s+в†’в‡Њв‰ ),]))", r"\1", text)
+    text = re.sub(r"([A-Z][a-z]?\d*)\s*\+\s*\d+(?=($|[\s+в†’в‡Њв‰ ),]))", r"\1", text)
+    text = _repair_common_oxidation_ocr_misreads(text)
+    return _clean_spaces(text)
 def canonical_equation(equation: str) -> str:
     eq = fix_ocr_formula(equation).lower()
     eq = re.sub(r"\s+", "", eq)
@@ -213,10 +361,13 @@ def canonical_equation(equation: str) -> str:
         left, right = eq.split("≠", 1)
     else:
         return eq
+
     def norm_side(side: str) -> str:
         tokens = [re.sub(r"^\d+(?:[,.]\d+)?", "", t) for t in side.split("+") if t]
         return "+".join(sorted(tokens))
-    return "||".join(sorted([norm_side(left), norm_side(right)]))
+
+    a, b = norm_side(left), norm_side(right)
+    return "||".join(sorted([a, b]))
 
 
 def _normalize_condition_text(cond: str) -> str:
@@ -228,21 +379,36 @@ def _normalize_condition_text(cond: str) -> str:
 
 
 def normalize_condition(cond: str) -> dict:
+    """Store the exact visual arrow label.
+
+    The site needs to display everything that was printed above the arrow in the
+    textbook. Therefore the full cleaned condition string goes into `conditions`.
+    Structured fields are filled only as optional metadata; they do not replace
+    the exact condition.
+    """
     cond = _normalize_condition_text(cond)
     data = {"conditions": [], "temperature": [], "catalysts": [], "solvents": [], "pressure": []}
     if not cond:
         return data
+
+    # Exact label for rendering above the arrow.
     data["conditions"].append(cond)
+
     for m in re.finditer(r"\b\d{1,4}\s*-\s*\d{1,4}\s*°\s*C\b|\b\d{1,4}\s*°\s*C\b|\b\d{2,5}\s*K\b", cond, flags=re.I):
         data["temperature"].append(_normalize_condition_text(m.group(0)))
+
     if re.search(r"(^|[\s,])p([\s,]|$)|давлен|pressure", cond, flags=re.I):
         data["pressure"].append("p" if re.search(r"(^|[\s,])p([\s,]|$)", cond) else cond)
+
     for cat in ["Pt", "Pd", "Ni", "Fe", "Rh", "Rh/Pt", "Rh / Pt", "MnO2", "V2O5", "AlCl3", "FeCl3"]:
         if re.search(rf"(?<![A-Za-z0-9]){re.escape(cat)}(?![A-Za-z0-9])", cond):
-            data["catalysts"].append(cat)
+            if cat not in data["catalysts"]:
+                data["catalysts"].append(cat)
+
     for solv in ["CCl4", "SO2", "ацетон", "желатин", "EtOH", "MeOH", "DMSO"]:
         if solv.lower() in cond.lower():
             data["solvents"].append(solv)
+
     return data
 
 
@@ -269,15 +435,21 @@ def _is_visual_condition_line(line: str) -> bool:
 
 
 def _attach_visual_condition_lines(lines: list[str]) -> list[str]:
+    """Convert adjacent layout lines into A -> condition -> B.
+
+    local_hybrid_filter only passes visually adjacent condition lines, so this
+    function attaches a condition line to the immediately following reaction.
+    It does not propagate conditions to unrelated reactions.
+    """
     out: list[str] = []
     i = 0
     while i < len(lines):
         cur = _clean_spaces(lines[i])
         if _is_visual_condition_line(cur) and i + 1 < len(lines):
             nxt = _clean_spaces(lines[i + 1])
-            fixed = fix_ocr_formula(nxt)
-            arrows = list(re.finditer(r"(→|⇌)", fixed))
+            arrows = list(re.finditer(r"(→|⇌)", fix_ocr_formula(nxt)))
             if len(arrows) == 1:
+                fixed = fix_ocr_formula(nxt)
                 arrow = arrows[0].group(1)
                 left = fixed[:arrows[0].start()].strip()
                 right = fixed[arrows[0].end():].strip()
@@ -291,6 +463,7 @@ def _attach_visual_condition_lines(lines: list[str]) -> list[str]:
 
 
 def _strip_inline_definitions(text: str) -> str:
+    # Remove template definition tails from equation text, but parse_definitions sees them via context.
     text = re.sub(r"\s*\b(?:M|X|Hal|Me|E|Э)\s*(?:=|->|→|-)\s*[^;]+$", "", text)
     text = re.sub(r"\s*\([^)]*\b(?:M|X|Hal|Me|E|Э)\s*(?:=|->|→|-)[^)]*\)\s*$", "", text)
     return _clean_spaces(text)
@@ -299,10 +472,14 @@ def _strip_inline_definitions(text: str) -> str:
 def split_equation_and_conditions(line: str) -> tuple[str | None, dict, str]:
     line = fix_ocr_formula(line)
     reaction_name = ""
+
+    # Negative reaction: Bi + HNO3 конц. ≠
     if "≠" in line and "→" not in line and "⇌" not in line:
         left = line.split("≠", 1)[0].strip()
         if left:
             return f"{left} ≠", normalize_condition(""), reaction_name
+
+    # Pull reaction names from final parentheses; remove pure explanations and constants.
     m = re.search(r"\(([^()]*)\)\s*$", line)
     if m:
         inner = _clean_spaces(m.group(1))
@@ -314,9 +491,11 @@ def split_equation_and_conditions(line: str) -> tuple[str | None, dict, str]:
             line = line[:m.start()].strip()
         elif any(w in ilow for w in EXPLANATION_WORDS):
             line = line[:m.start()].strip()
+
     arrows = list(re.finditer(r"(⇌|→)", line))
     if not arrows:
         return None, normalize_condition(""), reaction_name
+
     if len(arrows) >= 2:
         left = line[:arrows[0].start()].strip()
         middle = line[arrows[0].end():arrows[1].start()].strip()
@@ -325,9 +504,11 @@ def split_equation_and_conditions(line: str) -> tuple[str | None, dict, str]:
         eq = fix_ocr_formula(f"{left} {arrow} {right}")
         eq = _strip_inline_definitions(eq)
         return eq, normalize_condition(middle), reaction_name
+
     arrow = arrows[0].group(1)
     left = line[:arrows[0].start()].strip()
-    right = _strip_inline_definitions(line[arrows[0].end():].strip())
+    right = line[arrows[0].end():].strip()
+    right = _strip_inline_definitions(right)
     eq = fix_ocr_formula(f"{left} {arrow} {right}")
     eq = _strip_inline_definitions(eq)
     return eq, normalize_condition(""), reaction_name
@@ -335,9 +516,15 @@ def split_equation_and_conditions(line: str) -> tuple[str | None, dict, str]:
 
 def looks_like_reaction(eq: str) -> bool:
     eq = fix_ocr_formula(eq)
-    if not eq or not ("→" in eq or "⇌" in eq or "≠" in eq):
+    if not eq:
         return False
-    if BAD_CONTEXT_RE.search(eq) or ORGANIC_TEMPLATE_RE.search(eq) or FREE_ION_RE.search(eq):
+    if not ("→" in eq or "⇌" in eq or "≠" in eq):
+        return False
+    if BAD_CONTEXT_RE.search(eq):
+        return False
+    if ORGANIC_TEMPLATE_RE.search(eq):
+        return False
+    if FREE_ION_RE.search(eq):
         return False
     if re.search(r"\b(e|ē)\s*[-+]|\be[-+]\b", eq):
         return False
@@ -359,13 +546,15 @@ def parse_definitions(text: str) -> dict[str, list[str]]:
     defs: dict[str, list[str]] = {}
     text_norm = _clean_spaces(text).replace("М", "M").replace("Х", "X")
     low = text_norm.lower()
+
     for key, values in GROUP_ALIASES.items():
         if key in low:
             defs.setdefault("M", values)
             if "гал" in key or "hal" in key:
                 defs["X"] = values
                 defs["Hal"] = values
-    for m in re.finditer(r"\b(M|X|Hal|Me|E|Э)\s*(?:=|->|→|-)\s*([^;)\n]+)", text_norm):
+
+    for m in re.finditer(r"(?<![A-Za-zА-Яа-я])(M|X|Hal|Me|E|Э)\s*(?:=|->|→|-)\s*([^;)\n]+)", text_norm):
         var, raw = m.group(1), m.group(2)
         vals: list[str] = []
         raw_low = raw.lower()
@@ -378,6 +567,7 @@ def parse_definitions(text: str) -> dict[str, list[str]]:
                 vals.append(p)
         if vals:
             defs[var] = list(dict.fromkeys(vals))
+
     if "Hal" in defs and "X" not in defs:
         defs["X"] = defs["Hal"]
     if "M" in defs and "Me" not in defs:
@@ -398,30 +588,38 @@ def infer_parenthetical_substitution(eq: str) -> list[str]:
         if not group:
             continue
         candidates = [e for e in elements if PERIODIC_GROUP.get(e) == group and e != alt]
-        if candidates:
-            out.append(re.sub(rf"\b{candidates[-1]}\b", alt, base))
+        if not candidates:
+            continue
+        target = candidates[-1]
+        out.append(re.sub(rf"\b{target}\b", alt, base))
     return list(dict.fromkeys(out))
 
 
 def _replace_template_var(text: str, var: str, val: str) -> str:
     if var == "Hal":
         return re.sub(r"Hal", val, text)
+    # Replace M/X/Me/E/Э both as standalone tokens and inside formulas like M2O, MOH, KX.
     return re.sub(rf"{re.escape(var)}(?![a-z])", val, text)
 
 
 def expand_templates(eq: str, context: str) -> list[str]:
     eq = fix_ocr_formula(eq).replace("М", "M").replace("Х", "X")
     defs = parse_definitions(eq + " " + context)
+
     if not TEMPLATE_VARS_RE.search(eq):
         return infer_parenthetical_substitution(eq)
+
     vars_found: list[str] = []
     for v in ["Hal", "Me", "M", "X", "E", "Э"]:
         if re.search(rf"{re.escape(v)}(?![a-z])", eq):
             if v in defs:
                 vars_found.append(v)
             else:
-                return []
-    base = _strip_inline_definitions(re.sub(r"\([^)]*(?:=|->|→|-)[^)]*\)", "", eq).strip())
+                return []  # Never save a generic M/X reaction.
+
+    base = _strip_inline_definitions(eq)
+    base = re.sub(r"\([^)]*(?:=|->|→|-)[^)]*\)", "", base).strip()
+
     expanded: list[str] = []
     for combo in itertools.product(*[defs[v] for v in vars_found]):
         cur = base
@@ -448,31 +646,66 @@ def _merge_broken_lines(lines: list[str]) -> list[str]:
 
 
 def _score(r: ExtractedReaction) -> int:
-    return sum(len(getattr(r, f, "") or "") for f in ["equation", "conditions", "catalysts", "solvents", "temperature", "pressure", "states", "reaction_name"])
+    return sum(len(getattr(r, f, "") or "") for f in [
+        "equation",
+        "conditions",
+        "catalysts",
+        "solvents",
+        "temperature",
+        "pressure",
+        "states",
+        "reaction_name",
+    ])
 
 
 def extract_reactions_from_text(text: str) -> list[ExtractedReaction]:
     raw_lines = [_clean_spaces(x) for x in str(text or "").splitlines() if _clean_spaces(x)]
     lines = _attach_visual_condition_lines(_merge_broken_lines(raw_lines))
     reactions: list[ExtractedReaction] = []
+
     for idx, raw in enumerate(lines):
-        context = " ".join(lines[max(0, idx - 5): min(len(lines), idx + 5)])
+        context = " ".join(lines[max(0, idx - 5): min(len(lines), idx + 6)])
         if BAD_CONTEXT_RE.search(raw):
             continue
+
         eq, meta, reaction_name = split_equation_and_conditions(raw)
         if not eq:
             continue
+
         for candidate in expand_templates(eq, context):
             candidate = fix_ocr_formula(candidate)
+
+            # Repair expanded hydride OCR: 2Na + H2 -> 2Na + H becomes 2Na + H2 -> 2NaH.
+            candidate = re.sub(
+                r"\b2(Li|Na|K|Rb|Cs)\s*\+\s*H2\s*→\s*2\1\s*\+\s*H\b",
+                r"2\1 + H2 → 2\1H",
+                candidate,
+            )
+
             if not looks_like_reaction(candidate):
                 continue
-            if "≠" in candidate and "→" not in candidate and "⇌" not in candidate:
-                left, right, arrow = candidate.split("≠", 1)[0].strip(), "", "≠"
-            else:
-                left, right = re.split(r"→|⇌", candidate, maxsplit=1)
-                arrow = "⇌" if "⇌" in candidate else "→"
+
+            if "≠" in candidate and ("→" not in candidate and "⇌" not in candidate):
+                left = candidate.split("≠", 1)[0].strip()
+                reactions.append(ExtractedReaction(
+                    equation=f"{left} ≠",
+                    reactants=left,
+                    products="",
+                    conditions="",
+                    catalysts="",
+                    solvents="",
+                    temperature="",
+                    pressure="",
+                    states="",
+                    confidence_score=0.9,
+                    reaction_name=reaction_name,
+                ))
+                continue
+
+            left, right = re.split(r"→|⇌", candidate, maxsplit=1)
+            arrow = "⇌" if "⇌" in candidate else "→"
             reactions.append(ExtractedReaction(
-                equation=f"{left.strip()} {arrow} {right.strip()}".strip(),
+                equation=f"{left.strip()} {arrow} {right.strip()}",
                 reactants=left.strip(),
                 products=right.strip(),
                 conditions=_unique_join(meta["conditions"]),
@@ -481,9 +714,10 @@ def extract_reactions_from_text(text: str) -> list[ExtractedReaction]:
                 temperature=_unique_join(meta["temperature"]),
                 pressure=_unique_join(meta["pressure"]),
                 states="",
-                confidence_score=0.94,
+                confidence_score=0.93,
                 reaction_name=reaction_name,
             ))
+
     dedup: dict[str, ExtractedReaction] = {}
     for r in reactions:
         key = canonical_equation(r.equation)

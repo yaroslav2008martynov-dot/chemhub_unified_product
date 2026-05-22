@@ -8,7 +8,7 @@ import fitz
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.extractor import canonical_equation, extract_reactions_from_text
+from app.extractor import canonical_equation, extract_reactions_from_text, fix_ocr_formula
 from app.local_hybrid_filter import build_hybrid_page_text
 from app.models import JobReaction, ProcessingJob
 
@@ -25,51 +25,33 @@ def process_pdf_job(job_id: int, file_path: str, filename: str) -> None:
     threading.Thread(target=_process_pdf_job_sync, args=(job_id, file_path, filename), daemon=True).start()
 
 
-def _dict_to_reaction_objs(d: dict) -> list:
-    """Sanitize optional vision output through the same chemistry parser.
-
-    This prevents vision/OCR from reintroducing oxidation states, charges or
-    generic M/X formulas while still allowing it to provide arrow conditions.
-    """
-    eq = str(d.get("equation", "") or "")
-    cond = str(d.get("conditions", "") or "")
-    reactants = str(d.get("reactants", "") or "")
-    products = str(d.get("products", "") or "")
-    arrow = "⇌" if "⇌" in eq else ("→" if "→" in eq else ("≠" if "≠" in eq else "→"))
-
-    candidates: list[str] = []
-    if reactants and products:
-        if cond:
-            candidates.append(f"{reactants} {arrow} {cond} {arrow} {products}")
-        else:
-            candidates.append(f"{reactants} {arrow} {products}")
-    if eq:
-        if cond and ("→" in eq or "⇌" in eq):
-            try:
-                a = "⇌" if "⇌" in eq else "→"
-                left, right = eq.split(a, 1)
-                candidates.append(f"{left.strip()} {a} {cond} {a} {right.strip()}")
-            except Exception:
-                candidates.append(eq)
-        else:
-            candidates.append(eq)
-
-    out = []
-    for text in candidates:
-        out.extend(extract_reactions_from_text(text))
-    return out
+def _dict_to_reaction_obj(d: dict):
+    class R:
+        pass
+    r = R()
+    eq = fix_ocr_formula(d.get("equation", "") or "")
+    arrow = "⇌" if "⇌" in eq else ("→" if "→" in eq else ("≠" if "≠" in eq else ""))
+    if arrow and arrow in eq:
+        left, right = eq.split(arrow, 1)
+    else:
+        left, right = "", ""
+    r.reaction_name = d.get("reaction_name", "") or ""
+    r.equation = eq
+    r.reactants = left.strip()
+    r.products = right.strip()
+    r.conditions = d.get("conditions", "") or ""
+    r.catalysts = d.get("catalysts", "") or ""
+    r.solvents = d.get("solvents", "") or ""
+    r.temperature = d.get("temperature", "") or ""
+    r.pressure = d.get("pressure", "") or ""
+    r.states = d.get("states", "") or ""
+    r.confidence_score = float(d.get("confidence_score", 0.9) or 0.9)
+    return r
 
 
 def _reaction_quality(r) -> int:
     return sum(len(str(getattr(r, f, "") or "")) for f in [
-        "equation",
-        "conditions",
-        "catalysts",
-        "solvents",
-        "temperature",
-        "pressure",
-        "states",
-        "reaction_name",
+        "equation", "conditions", "catalysts", "solvents", "temperature", "pressure", "states", "reaction_name"
     ])
 
 
@@ -84,6 +66,7 @@ def _existing_job_reactions(db: Session, job_id: int) -> dict[str, JobReaction]:
 
 
 def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page_index: int) -> None:
+    reaction.equation = fix_ocr_formula(reaction.equation)
     key = canonical_equation(reaction.equation)
     existing = _existing_job_reactions(db, job_id).get(key)
     if existing:
@@ -103,7 +86,6 @@ def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page
             existing.source_page = page_index
             existing.confidence_score = reaction.confidence_score
         return
-
     db.add(JobReaction(
         job_id=job_id,
         reaction_name=getattr(reaction, "reaction_name", "") or "",
@@ -130,7 +112,6 @@ def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
         job = db.get(ProcessingJob, job_id)
         if job is None:
             return
-
         job.status = "processing"
         job.message = "Opening PDF"
         db.commit()
@@ -140,23 +121,32 @@ def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
         db.commit()
 
         use_vision = extract_page_reactions is not None
-
         for page_index, page in enumerate(doc, start=1):
             text = build_hybrid_page_text(page)
-            found = extract_reactions_from_text(text)
+            found = []
+
+            # Text extractor is always run because it preserves exact visual arrow labels from the page layout.
+            text_found = extract_reactions_from_text(text)
+            found.extend(text_found)
 
             if use_vision:
                 try:
                     job.message = f"Vision extraction page {page_index}/{len(doc)}"
                     db.commit()
                     vision_items = extract_page_reactions(file_path, page_index - 1, context=text)
-                    for item in vision_items:
-                        found.extend(_dict_to_reaction_objs(item))
-                    print(f"CHEMHUB_VISION_USED page={page_index} total_candidates={len(found)}", flush=True)
+                    vision_found = [_dict_to_reaction_obj(x) for x in vision_items]
+                    # Re-run extractor on vision equations to remove oxidation-state OCR artifacts.
+                    normalized_vision = []
+                    for vr in vision_found:
+                        for rr in extract_reactions_from_text("\n".join([vr.conditions, vr.equation]).strip() or vr.equation):
+                            rr.reaction_name = rr.reaction_name or vr.reaction_name
+                            normalized_vision.append(rr)
+                    found.extend(normalized_vision)
+                    print(f"CHEMHUB_VISION_USED page={page_index} reactions={len(vision_found)}", flush=True)
                 except Exception as exc:
                     print(f"CHEMHUB_VISION_FAILED page={page_index}: {exc}", flush=True)
 
-            print(f"CHEMHUB_EXTRACT page={page_index} reactions={len(found)}", flush=True)
+            print(f"CHEMHUB_PAGE page={page_index} text_reactions={len(text_found)} total_candidates={len(found)}", flush=True)
             for reaction in found:
                 _upsert_job_reaction(db, job_id, reaction, filename, page_index)
 
