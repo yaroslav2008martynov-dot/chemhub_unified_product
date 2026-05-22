@@ -1,5 +1,12 @@
-ChemHub v9.8.2 strict oxidation real fix
+ChemHub v10.12.1
 
-1. Extract this ZIP directly into C:\chemhub_unified_product
-2. Run:
-   powershell -ExecutionPolicy Bypass -File .\Apply-ChemHub-v9.8.2.ps1
+Global oxidation cleanup layer.
+
+Install:
+cd C:\chemhub_unified_product
+powershell -ExecutionPolicy Bypass -File .\Apply-ChemHub-v10.12.1.ps1
+
+After install:
+docker compose restart api agent site
+Open http://localhost:5173 and press Ctrl+F5.
+Reload PDF; old AI-agent rows do not change automatically.
