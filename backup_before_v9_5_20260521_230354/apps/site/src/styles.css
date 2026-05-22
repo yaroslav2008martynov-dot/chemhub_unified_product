@@ -1,0 +1,30 @@
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a}
+a{color:inherit}.container{max-width:1180px;margin:0 auto;padding:24px}
+.card{background:white;border:1px solid #e2e8f0;border-radius:16px;padding:20px;box-shadow:0 8px 20px rgba(15,23,42,.04);margin-bottom:16px}
+.hero-card h1{font-size:34px;margin:0 0 8px}.search-row{display:flex;gap:10px;align-items:center}.search-row input{margin:0;flex:1}
+input,textarea,select{width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;margin:6px 0 12px;font:inherit}
+button{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;background:#0f172a;color:white;font-weight:600;margin:4px}
+.badge{display:inline-block;padding:5px 9px;background:#e0f2fe;border-radius:999px;font-size:12px;margin:4px 6px 4px 0}.score{font-size:12px;background:#dcfce7;color:#166534;border-radius:999px;padding:6px 10px}
+.ad{border:1px dashed #94a3b8;padding:14px;border-radius:14px;color:#64748b;text-align:center;margin:14px 0}.footer{margin-top:40px;padding:24px;background:#0f172a;color:white;text-align:center}.footer a{color:#bfdbfe}
+.header{background:white;border-bottom:1px solid #e2e8f0}.header-inner{max-width:1180px;margin:0 auto;padding:18px 24px;display:flex;justify-content:space-between;align-items:center}.hint{color:#64748b}
+.reaction-card{border:1px solid #e2e8f0;border-radius:16px;padding:16px;margin:14px 0;background:#fff}.reaction-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.reaction-card h3{margin:0 0 8px}
+.reaction-link,.equation-link{color:inherit;text-decoration:none}.reaction-link:hover{color:#2563eb;text-decoration:underline}
+.reaction-equation{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:18px 18px;margin:12px 0;font-family:Georgia,'Times New Roman',serif;font-size:1.45rem;font-weight:800;line-height:1.3}
+.equation-link:hover .reaction-equation{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.chem-side{letter-spacing:.2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0}.reaction-equation .chem-side:first-child{justify-content:flex-end}.reaction-equation .chem-side:last-child{justify-content:flex-start}
+.plus{padding:0 .28em}.arrow-stack{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;align-self:center;transform:translateY(-2px)}
+.arrow-label{font-size:.78rem;font-family:Inter,Arial,sans-serif;font-weight:700;color:#7c2d12;background:#ffedd5;border:1px solid #fed7aa;border-radius:999px;padding:2px 9px;margin-bottom:2px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.chem-arrow{display:inline-flex;align-items:center;justify-content:center;min-width:82px;height:34px;border-radius:999px;background:linear-gradient(90deg,#0f766e,#2563eb);color:white;font-size:2rem;line-height:1;box-shadow:0 8px 18px rgba(37,99,235,.2)}
+.chem-arrow.reversible{background:linear-gradient(90deg,#7c3aed,#2563eb)}
+.chem-sub{font-size:.66em;vertical-align:sub;line-height:0;color:#dc2626;font-weight:900}.chem-super{font-size:.66em;vertical-align:super;line-height:0;color:#7c3aed;font-weight:900}
+.mol-note-wrap{display:inline-flex;flex-direction:column;align-items:center;line-height:1.05}.mol-note-wrap small{font-family:Inter,Arial,sans-serif;font-size:.55em;color:#475569;font-weight:700;margin-top:2px;max-width:140px;text-align:center}
+.reaction-name-bottom{font-size:.95rem;color:#334155;margin-top:8px;background:#f1f5f9;border-radius:10px;padding:8px 10px}.warn{background:#fef3c7;color:#92400e}
+
+.pt-legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.pt-legend span{padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700}.block-s{background:#dbeafe}.block-p{background:#dcfce7}.block-d{background:#fef3c7}.block-f{background:#f3e8ff}
+.periodic-table{display:grid;grid-template-columns:repeat(18, minmax(42px, 1fr));grid-template-rows:repeat(9, 58px);gap:5px;overflow-x:auto;padding-bottom:8px}
+.element{min-width:42px;padding:4px;border-radius:8px;border:1px solid #cbd5e1;color:#0f172a;background:#fff;text-align:left;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 6px rgba(15,23,42,.04)}
+.element small{font-size:10px;color:#475569}.element b{font-size:18px;line-height:1}.element:hover{outline:3px solid rgba(37,99,235,.18)}
+.element.block-s{background:#dbeafe;border-color:#93c5fd}.element.block-p{background:#dcfce7;border-color:#86efac}.element.block-d{background:#fef3c7;border-color:#fcd34d}.element.block-f{background:#f3e8ff;border-color:#d8b4fe}
+.series-label{align-self:center;justify-self:end;color:#64748b;font-weight:800;font-size:12px;padding-right:8px}
+@media(max-width:800px){.search-row{display:block}.reaction-card-head{display:block}.reaction-equation{font-size:1.05rem;gap:8px}.chem-arrow{min-width:56px}.periodic-table{grid-template-columns:repeat(18, 46px)}}

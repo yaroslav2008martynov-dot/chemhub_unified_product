@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: chemhub
+      POSTGRES_USER: chemhub
+      POSTGRES_PASSWORD: chemhub
+    ports: ["5432:5432"]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chemhub -d chemhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ./apps/api
+    env_file: [.env]
+    ports: ["8000:8000"]
+    volumes:
+      - ./data/uploads:/app/uploads
+      - ./data/exports:/app/exports
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  site:
+    build: ./apps/site
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+  agent:
+    build: ./apps/agent
+    ports: ["5173:5173"]
+    depends_on: [api]
+
+  admin:
+    build: ./apps/admin
+    ports: ["3100:3100"]
+    depends_on: [api]
+
+volumes:
+  postgres_data:
