@@ -261,7 +261,7 @@ def strip_oxidation_states(text: str) -> str:
 
     # Common OCR: H₂⁰ can appear as H20. Only treat it as H2 in the redox examples
     # where it is directly followed by S, CuO, Ca or alkali metal.
-    text = re.sub(r"\bH20(?=\s*\+\s*(?:O2|S|CuO|Ca|Li|Na|K|Rb|Cs|F2|Cl2|Br2|I2|N2)\b)", "H2", text)
+    text = re.sub(r"\bH20(?=\s*\+\s*(?:S|CuO|Ca|Li|Na|K|Rb|Cs)\b)", "H2", text)
     text = text.replace("H20", "H2O")
 
     # Remove bracket charges: [S8^2+] -> [S8], [AsF6-] -> [AsF6].
@@ -316,40 +316,6 @@ def fix_ocr_formula(text: str) -> str:
     return _clean_spaces(text)
 
 
-def _repair_common_oxidation_ocr_misreads(text: str) -> str:
-    """Repair common OCR cases where oxidation states were read as formula atoms.
-
-    Examples:
-    2H2^0 + O2 -> 2H2^+1O must become 2H2 + O2 -> 2H2O.
-    This function is deliberately narrow: it fixes known oxidation-state OCR artifacts
-    without changing normal H2O reactions.
-    """
-    text = _clean_spaces(text)
-
-    # Water self-reaction artifact from H2^0/O^-2 notation:
-    # 2H2O + O2 -> 2H2O  should be  2H2 + O2 -> 2H2O
-    def _fix_h2_o2(m: re.Match) -> str:
-        left_coef = m.group(1) or ""
-        right_coef = m.group(2) or ""
-        return f"{left_coef}H2 + O2 в†’ {right_coef}H2O"
-
-    text = re.sub(
-        r"\b(\d*)H2O\s*\+\s*O2\s*в†’\s*(\d*)H2O\b",
-        _fix_h2_o2,
-        text,
-    )
-
-    # Earlier textbook cases with H2^0 read as H2O.
-    text = re.sub(r"\bH2O\s*\+\s*S\s*в†’\s*H2S\b", "H2 + S в†’ H2S", text)
-    text = re.sub(r"\bH2O\s*\+\s*CuO\s*в†’\s*Cu\s*\+\s*H2O\b", "H2 + CuO в†’ Cu + H2O", text)
-    text = re.sub(r"\bH2O\s*\+\s*Ca\s*в†’\s*CaH2\b", "H2 + Ca в†’ CaH2", text)
-
-    # Remove any leftover oxidation-state fragments that survived OCR normalization.
-    text = re.sub(r"([A-Z][a-z]?\d*)\s*\+\s*1(?=[A-Z])", r"\1", text)
-    text = re.sub(r"([A-Z][a-z]?\d*)\s*-\s*\d+(?=($|[\s+в†’в‡Њв‰ ),]))", r"\1", text)
-    text = re.sub(r"([A-Z][a-z]?\d*)\s*\+\s*\d+(?=($|[\s+в†’в‡Њв‰ ),]))", r"\1", text)
-    text = _repair_common_oxidation_ocr_misreads(text)
-    return _clean_spaces(text)
 def canonical_equation(equation: str) -> str:
     eq = fix_ocr_formula(equation).lower()
     eq = re.sub(r"\s+", "", eq)
