@@ -20,58 +20,37 @@ except Exception:
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-
 def process_pdf_job(job_id: int, file_path: str, filename: str) -> None:
     threading.Thread(target=_process_pdf_job_sync, args=(job_id, file_path, filename), daemon=True).start()
 
+def _dict_to_reaction_obj(d: dict):
+    class R:
+        pass
 
-def _dict_to_reaction_objs(d: dict) -> list:
-    """Sanitize optional vision output through the same chemistry parser.
-
-    This prevents vision/OCR from reintroducing oxidation states, charges or
-    generic M/X formulas while still allowing it to provide arrow conditions.
-    """
+    r = R()
     eq = str(d.get("equation", "") or "")
-    cond = str(d.get("conditions", "") or "")
-    reactants = str(d.get("reactants", "") or "")
-    products = str(d.get("products", "") or "")
-    arrow = "⇌" if "⇌" in eq else ("→" if "→" in eq else ("≠" if "≠" in eq else "→"))
-
-    candidates: list[str] = []
-    if reactants and products:
-        if cond:
-            candidates.append(f"{reactants} {arrow} {cond} {arrow} {products}")
-        else:
-            candidates.append(f"{reactants} {arrow} {products}")
-    if eq:
-        if cond and ("→" in eq or "⇌" in eq):
-            try:
-                a = "⇌" if "⇌" in eq else "→"
-                left, right = eq.split(a, 1)
-                candidates.append(f"{left.strip()} {a} {cond} {a} {right.strip()}")
-            except Exception:
-                candidates.append(eq)
-        else:
-            candidates.append(eq)
-
-    out = []
-    for text in candidates:
-        out.extend(extract_reactions_from_text(text))
-    return out
-
+    arrow = "⇌" if "⇌" in eq else ("→" if "→" in eq else ("≠" if "≠" in eq else "->"))
+    if arrow in eq:
+        left, right = eq.split(arrow, 1)
+    else:
+        left, right = "", ""
+    r.reaction_name = d.get("reaction_name", "")
+    r.equation = eq
+    r.reactants = left.strip()
+    r.products = right.strip()
+    r.conditions = d.get("conditions", "")
+    r.catalysts = d.get("catalysts", "")
+    r.solvents = d.get("solvents", "")
+    r.temperature = d.get("temperature", "")
+    r.pressure = d.get("pressure", "")
+    r.states = d.get("states", "")
+    r.confidence_score = float(d.get("confidence_score", 0.9) or 0.9)
+    return r
 
 def _reaction_quality(r) -> int:
     return sum(len(str(getattr(r, f, "") or "")) for f in [
-        "equation",
-        "conditions",
-        "catalysts",
-        "solvents",
-        "temperature",
-        "pressure",
-        "states",
-        "reaction_name",
+        "equation", "conditions", "catalysts", "solvents", "temperature", "pressure", "states", "reaction_name",
     ])
-
 
 def _existing_job_reactions(db: Session, job_id: int) -> dict[str, JobReaction]:
     out: dict[str, JobReaction] = {}
@@ -81,7 +60,6 @@ def _existing_job_reactions(db: Session, job_id: int) -> dict[str, JobReaction]:
         except Exception:
             out[jr.equation] = jr
     return out
-
 
 def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page_index: int) -> None:
     key = canonical_equation(reaction.equation)
@@ -123,14 +101,12 @@ def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page
         selected=True,
     ))
 
-
 def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
     db: Session = SessionLocal()
     try:
         job = db.get(ProcessingJob, job_id)
         if job is None:
             return
-
         job.status = "processing"
         job.message = "Opening PDF"
         db.commit()
@@ -140,18 +116,20 @@ def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
         db.commit()
 
         use_vision = extract_page_reactions is not None
-
         for page_index, page in enumerate(doc, start=1):
             text = build_hybrid_page_text(page)
-            found = extract_reactions_from_text(text)
+            found = []
+
+            # Always run text extractor: it is currently the safest source for arrow conditions.
+            text_found = extract_reactions_from_text(text)
+            found.extend(text_found)
 
             if use_vision:
                 try:
                     job.message = f"Vision extraction page {page_index}/{len(doc)}"
                     db.commit()
                     vision_items = extract_page_reactions(file_path, page_index - 1, context=text)
-                    for item in vision_items:
-                        found.extend(_dict_to_reaction_objs(item))
+                    found.extend(_dict_to_reaction_obj(x) for x in vision_items)
                     print(f"CHEMHUB_VISION_USED page={page_index} total_candidates={len(found)}", flush=True)
                 except Exception as exc:
                     print(f"CHEMHUB_VISION_FAILED page={page_index}: {exc}", flush=True)

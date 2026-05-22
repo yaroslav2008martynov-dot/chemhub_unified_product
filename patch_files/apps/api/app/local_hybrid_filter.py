@@ -7,12 +7,22 @@ from typing import Any
 ARROW_RE = re.compile(r"(->|=>|<->|<=>|→|⇌|⟶|↔|=)")
 FORMULA_RE = re.compile(r"(?:\d*\s*)?(?:\[[^\]]+\]|[A-ZА-Я][a-zа-я]?)(?:[A-Za-zА-Яа-я0-9()\[\].·+\-↑↓]*)")
 CONDITION_RE = re.compile(
-    r"(^|[\s,])(t|p|hv|hν|Δ)([\s,]|$)|\d{1,4}\s*(?:-\s*\d{1,4}\s*)?(?:°\s*C|°C|o\s*C)|\d{2,5}\s*K|кат\.?|нагрев|электролиз|расплав|в токе|желатин|ацетон|SO2\s*ж|CrO3|HNO3|P4O10|F2|NaF|Pt|Pd|Ni|Fe|MnO2|V2O5",
+    r"(^|[\s,])(t|p|hv|hν|Δ)([\s,]|$)"
+    r"|\d{1,4}\s*(?:-\s*\d{1,4}\s*)?(?:°\s*C|°C|o\s*C|C\b)"
+    r"|\d{2,5}\s*K\b"
+    r"|кат\.?|нагрев|электролиз|расплав|давлен|pressure"
+    r"|в\s+токе|желатин|ацетон|SO2\s*ж|CrO3|HNO3|P4O10|F2|NaF|Pt|Pd|Ni|Fe|MnO2|V2O5|AlCl3|FeCl3",
     re.I,
 )
-TEMPLATE_CONTEXT_RE = re.compile(r"\b(M|X|Hal|Me|E|Э)\s*(?:=|→|->|-)|щелоч|щзм|щм|галоген|халькоген|пниктоген|group\s*(?:13|14|15|16|17)|(?:13|14|15|16|17)\s*группа", re.I)
+TEMPLATE_CONTEXT_RE = re.compile(
+    r"\b(M|X|Hal|Me|E|Э)\s*(?:=|→|->|-)"
+    r"|щелоч|щзм|щм|галоген|халькоген|пниктоген"
+    r"|group\s*(?:13|14|15|16|17)|(?:13|14|15|16|17)\s*группа",
+    re.I,
+)
 BAD_PROSE_RE = re.compile(r"\b(рис\.|таблица|пример|задача|вопрос|ответ|упражнение|страница)\b", re.I)
 IONIC_OR_ELECTRODE_RE = re.compile(r"\b(катод|анод|электрон|полуреакц|баланс|pka|pkb|пка|пкб|пр\s*=)\b|[ē]", re.I)
+
 
 @dataclass
 class LayoutLine:
@@ -23,18 +33,36 @@ class LayoutLine:
     x1: float
     y1: float
 
+
 def _clean(s: str) -> str:
     if not s:
         return ""
     repl = {
-        "": "⚡", "⎯": " ", "─": " ", "—": "-", "–": "-",
-        "оС": "°C", "o C": "°C", "oC": "°C", "Сo": "°C", "Со": "°C",
-        "⟶": "→", "=>": "→", "->": "→", "<=>": "⇌", "<->": "⇌", "↔": "⇌",
+        "": "⚡",
+        "⎯": " ",
+        "─": " ",
+        "—": "-",
+        "–": "-",
+        "оС": "°C",
+        "o C": "°C",
+        "oC": "°C",
+        "Сo": "°C",
+        "Со": "°C",
+        "⟶": "→",
+        "=>": "→",
+        "->": "→",
+        "<=>": "⇌",
+        "<->": "⇌",
+        "↔": "⇌",
+        "тЖТ": "→",
+        "тЖУ": "↓",
+        "тЙа": "≠",
     }
     for a, b in repl.items():
         s = s.replace(a, b)
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
 
 def _line_score(text: str) -> int:
     t = _clean(text)
@@ -49,7 +77,7 @@ def _line_score(text: str) -> int:
     elif len(formulas) == 1:
         score += 1
     if CONDITION_RE.search(t):
-        score += 3
+        score += 4
     if TEMPLATE_CONTEXT_RE.search(t):
         score += 3
     if BAD_PROSE_RE.search(t):
@@ -59,6 +87,7 @@ def _line_score(text: str) -> int:
     if len(t) > 180:
         score -= 3
     return score
+
 
 def extract_layout_lines(page: Any) -> list[LayoutLine]:
     out: list[LayoutLine] = []
@@ -88,33 +117,42 @@ def extract_layout_lines(page: Any) -> list[LayoutLine]:
     out.sort(key=lambda l: (round(l.y0, 1), l.x0))
     return out
 
-def build_hybrid_page_text(page: Any) -> str:
-    """Return reaction-like lines with only their visually adjacent condition lines.
 
-    Important: condition lines are included only when close to a reaction arrow line.
-    This prevents a condition from one reaction being attached to unrelated reactions.
+def _near_condition_for_reaction(condition: LayoutLine, reaction: LayoutLine) -> bool:
+    vertical_gap = min(
+        abs(condition.y1 - reaction.y0),
+        abs(condition.y0 - reaction.y1),
+        abs(condition.y0 - reaction.y0),
+    )
+    # Condition printed above the arrow is usually horizontally inside reaction width.
+    same_block_x = not (condition.x1 < reaction.x0 - 80 or condition.x0 > reaction.x1 + 80)
+    return vertical_gap < 55 and same_block_x
+
+
+def build_hybrid_page_text(page: Any) -> str:
+    """Return reaction-like lines with only visually adjacent arrow labels.
+
+    A condition line is included only when it is visually close to a reaction line.
+    The parser then attaches that line to the next reaction only, avoiding leakage
+    of conditions to unrelated reactions.
     """
     lines = extract_layout_lines(page)
     if not lines:
         return ""
-    selected: set[int] = set()
 
+    selected: set[int] = set()
     for i, ln in enumerate(lines):
         score = _line_score(ln.text)
         if score >= 6:
             selected.add(i)
-
-            # Add visually adjacent condition lines directly above/below this reaction.
-            for j in (i - 2, i - 1, i + 1):
+            # Add nearby condition labels above/below the arrow.
+            for j in (i - 3, i - 2, i - 1, i + 1):
                 if 0 <= j < len(lines):
                     near = lines[j]
-                    vertical_gap = min(abs(near.y1 - ln.y0), abs(near.y0 - ln.y1), abs(near.y0 - ln.y0))
-                    same_block_x = not (near.x1 < ln.x0 - 40 or near.x0 > ln.x1 + 40)
-                    if vertical_gap < 45 and same_block_x and CONDITION_RE.search(near.text):
+                    if CONDITION_RE.search(near.text) and _near_condition_for_reaction(near, ln):
                         selected.add(j)
 
-            # Add same-line or immediately following split products only when they look like formulas,
-            # not arbitrary condition lines.
+            # Add split product continuation lines.
             if i + 1 < len(lines):
                 nxt = lines[i + 1]
                 vertical_gap = abs(nxt.y0 - ln.y0)
