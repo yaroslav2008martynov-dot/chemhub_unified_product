@@ -31,7 +31,7 @@ def _dict_to_reaction_obj(d: dict):
         pass
     r = R()
     eq = d.get("equation", "")
-    arrow = "⇌" if "⇌" in eq else ("→" if "→" in eq else ("≠" if "≠" in eq else "->"))
+    arrow = "⇌" if "⇌" in eq else ("→" if "→" in eq else "->")
     if arrow in eq:
         left, right = eq.split(arrow, 1)
     else:
@@ -70,6 +70,7 @@ def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page
         if _reaction_quality(reaction) > _reaction_quality(existing):
             existing.reaction_name = getattr(reaction, "reaction_name", "") or existing.reaction_name
             existing.equation = reaction.equation
+            existing.canonical_equation = key
             existing.reactants = reaction.reactants
             existing.products = reaction.products
             existing.conditions = reaction.conditions
@@ -86,6 +87,7 @@ def _upsert_job_reaction(db: Session, job_id: int, reaction, filename: str, page
         job_id=job_id,
         reaction_name=getattr(reaction, "reaction_name", "") or "",
         equation=reaction.equation,
+        canonical_equation=key,
         reactants=reaction.reactants,
         products=reaction.products,
         conditions=reaction.conditions,
@@ -109,17 +111,13 @@ def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
         job.status = "processing"
         job.message = "Opening PDF"
         db.commit()
-
         doc = fitz.open(file_path)
         job.total_pages = len(doc)
         db.commit()
-
         use_vision = extract_page_reactions is not None
-
         for page_index, page in enumerate(doc, start=1):
             text = build_hybrid_page_text(page)
             found = []
-
             if use_vision:
                 try:
                     job.message = f"Vision extraction page {page_index}/{len(doc)}"
@@ -130,25 +128,20 @@ def _process_pdf_job_sync(job_id: int, file_path: str, filename: str) -> None:
                 except Exception as exc:
                     print(f"CHEMHUB_VISION_FAILED page={page_index}: {exc}", flush=True)
                     found = []
-
             if not found:
                 found = extract_reactions_from_text(text)
                 print(f"CHEMHUB_TEXT_FALLBACK page={page_index} reactions={len(found)}", flush=True)
-
             for reaction in found:
                 _upsert_job_reaction(db, job_id, reaction, filename, page_index)
-
             job.processed_pages = page_index
             job.progress_percent = int((page_index / max(len(doc), 1)) * 100)
             job.message = f"Processed page {page_index}/{len(doc)}"
             db.commit()
             time.sleep(0.01)
-
         job.status = "completed"
         job.progress_percent = 100
         job.message = "Processing completed"
         db.commit()
-
     except Exception as exc:
         job = db.get(ProcessingJob, job_id)
         if job:
